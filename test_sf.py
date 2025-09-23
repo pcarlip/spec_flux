@@ -9,9 +9,8 @@ from analysis.sf_au import sf_au
 from analysis.sf_ln import sf_ln
 
 
-def test_answer():
-    a = np.ones(shape=(3, 3, 3))
-    b = np.array([0, 1, 2])
-    out = sf_au(b, b, b, a, a, a)
-    print(out)
+def test_minimal() -> None:
+    u = np.ones(shape=(3, 3, 3))
+    x = np.array([0, 1, 2])
+    out = sf_au(x, x, x, u, u, u)
     assert np.all(out[1] == 0)
