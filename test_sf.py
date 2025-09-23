@@ -14,4 +14,7 @@ def func(x):
 
 
 def test_answer():
-    assert func(3) == 5
+    a = np.ones(shape=(3, 3, 3))
+    b = np.ones(shape=3)
+    sf_au(b, b, b, a, a, a)
+    assert func(3) == 4
