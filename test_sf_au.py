@@ -43,3 +43,41 @@ def test_rectangle_cp() -> None:
     z = cp.array([0, 1, 2, 3, 4])
     out = sf_au(x, y, z, u, u, u)
     assert np.all(out[1] == 0)
+
+
+def test_fluidsf_comp() -> None:
+    rng = np.random.default_rng(31415)
+    u = rng.normal(size=(10, 11, 12))
+    v = rng.normal(size=(10, 11, 12))
+    w = rng.normal(size=(10, 11, 12))
+    x = np.arange(12)
+    y = np.arange(11)
+    z = np.arange(10)
+
+    full_sf = sf_au(x, y, z, u, v, w)
+    fsf = fluidsf.generate_structure_functions_3d(u, v, w, x, y, z, ["ASF_V"])
+    assert np.isclose(full_sf[1][0, 0, :], fsf["SF_advection_velocity_x"]).all()
+    assert np.isclose(full_sf[1][0, :, 0], fsf["SF_advection_velocity_y"]).all()
+    assert np.isclose(full_sf[1][:, 0, 0], fsf["SF_advection_velocity_z"]).all()
+
+
+def test_cupy_comp() -> None:
+    rng = np.random.default_rng(31415)
+    u = rng.normal(size=(10, 11, 12))
+    v = rng.normal(size=(10, 11, 12))
+    w = rng.normal(size=(10, 11, 12))
+    x = np.arange(12)
+    y = np.arange(11)
+    z = np.arange(10)
+
+    cu = cp.array(u)
+    cv = cp.array(v)
+    cw = cp.array(w)
+    cx = cp.array(x)
+    cy = cp.array(y)
+    cz = cp.array(z)
+
+    np_sf = sf_au(x, y, z, u, v, w)
+    cp_sf = sf_au(cx, cy, cz, cu, cv, cw)
+
+    assert np.isclose(np_sf[1], cp.asnumpy(cp_sf[1])).all()
