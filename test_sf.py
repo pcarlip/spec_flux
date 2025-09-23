@@ -9,12 +9,8 @@ from analysis.sf_au import sf_au
 from analysis.sf_ln import sf_ln
 
 
-def func(x):
-    return x + 1
-
-
 def test_answer():
     a = np.ones(shape=(3, 3, 3))
     b = np.ones(shape=3)
-    sf_au(b, b, b, a, a, a)
-    assert func(3) == 4
+    out = sf_au(b, b, b, a, a, a)
+    assert np.all(out == 0)
