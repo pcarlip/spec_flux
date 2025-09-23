@@ -11,6 +11,7 @@ from analysis.sf_ln import sf_ln
 
 def test_answer():
     a = np.ones(shape=(3, 3, 3))
-    b = np.ones(shape=3)
+    b = np.array([0, 1, 2])
     out = sf_au(b, b, b, a, a, a)
-    assert np.all(out == 0)
+    print(out)
+    assert np.all(out[1] == 0)
