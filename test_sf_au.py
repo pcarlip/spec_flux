@@ -6,7 +6,6 @@ import numpy as np
 
 sys.path.append("..")
 from analysis.sf_au import sf_au
-from analysis.sf_ln import sf_ln
 
 
 def test_minimal() -> None:
