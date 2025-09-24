@@ -45,6 +45,7 @@ def test_rectangle_cp() -> None:
 
 
 def test_fluidsf_comp() -> None:
+    """Structure function results along only one axis should match fluidsf"""
     rng = np.random.default_rng(31415)
     u = rng.normal(size=(10, 11, 12))
     v = rng.normal(size=(10, 11, 12))
@@ -61,6 +62,7 @@ def test_fluidsf_comp() -> None:
 
 
 def test_cupy_comp() -> None:
+    """Cupy and numpy calculations should agree"""
     rng = np.random.default_rng(31415)
     u = rng.normal(size=(10, 11, 12))
     v = rng.normal(size=(10, 11, 12))
