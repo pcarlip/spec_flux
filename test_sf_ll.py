@@ -5,7 +5,7 @@ import fluidsf
 import numpy as np
 
 sys.path.append("..")
-from analysis.sf_ln import sf_ln
+from numerics.sf_ln import sf_ln
 
 
 def test_minimal() -> None:
