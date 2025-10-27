@@ -14,6 +14,11 @@ class Axis(StrEnum):
     z = "z"
 
 
+class SFType(StrEnum):
+    Au = "Au"
+    LLL = "LLL"
+
+
 def conv_avg(
     k: float, sf: dict[str, np.ndarray], sf_name: str, transformation: Callable
 ) -> float:
