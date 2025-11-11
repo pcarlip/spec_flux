@@ -76,9 +76,9 @@ def fourier_prep(
         v_adv = fft.fftshift(fft.fftn(v_adv_realspace) * dx**3 / (2 * np.pi))
         w_adv = fft.fftshift(fft.fftn(w_adv_realspace) * dx**3 / (2 * np.pi))
     elif grad_method == GradMethod.numpy:
-        dudx, dudy, dudz = np.gradient(data.u, dx)
-        dvdx, dvdy, dvdz = np.gradient(data.v, dx)
-        dwdx, dwdy, dwdz = np.gradient(data.w, dx)
+        dudz, dudy, dudx = np.gradient(data.u, dx)
+        dvdz, dvdy, dvdx = np.gradient(data.v, dx)
+        dwdz, dwdy, dwdx = np.gradient(data.w, dx)
         u_adv_realspace = data.u * dudx + data.v * dudy + data.w * dudz
         v_adv_realspace = data.u * dvdx + data.v * dvdy + data.w * dvdz
         w_adv_realspace = data.u * dwdx + data.v * dwdy + data.w * dwdz
@@ -124,8 +124,8 @@ def fourier_int(
     L = N * dx
     dk = 2 * np.pi / L
 
-    masked_array = np.where(k_grid >= klim**2, pi_int, np.zeros_like(pi_int))
+    masked_array = np.where(k_grid <= klim**2, pi_int, np.zeros_like(pi_int))
 
     # I think the L**3 is a normalization condition, I'm not sure why I need the 2π
     # but it doesn't match structure function methods without it
-    return -np.sum(masked_array) * dk**3 / (4 * L**3)
+    return np.sum(masked_array) * dk**3 / (4 * L**3)
