@@ -1,6 +1,7 @@
 import cupy as cp
 import numpy as np
 from numba import njit, prange
+from scipy import fft
 
 from .roll import roll, roll_numba, roll_par
 
@@ -27,6 +28,7 @@ def sf_au(
     x: ndarray,
     y: ndarray,
     z: ndarray,
+    spectral: bool = False,
 ) -> tuple[tuple[ndarray, ndarray, ndarray], ndarray]:
     """Calculate the advective structure function on 3d velocity data
     Use all sets of separations, assume periodic data, accepts numpy or cupy arrays
@@ -46,6 +48,8 @@ def sf_au(
         1d array of y positions
     z : ndarray
         1d array of z positions
+    spectral : bool
+        Whether to use spectral calculation of gradients (default false)
 
     Returns
     -------
@@ -66,11 +70,30 @@ def sf_au(
 
     diffs = (dx, dy, dz)
 
-    grads = (
-        np.gradient(u, z, y, x, axis=(0, 1, 2)),
-        np.gradient(v, z, y, x, axis=(0, 1, 2)),
-        np.gradient(w, z, y, x, axis=(0, 1, 2)),
-    )
+    if spectral:
+        k_range = 2 * np.pi / dx
+        l_range = 2 * np.pi / dy
+        m_range = 2 * np.pi / dz
+        u_hat = fft.fftshift(fft.fftn(u))
+        v_hat = fft.fftshift(fft.fftn(v))
+        w_hat = fft.fftshift(fft.fftn(w))
+        k_mesh = np.meshgrid(m_range, l_range, k_range)
+        dudx = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[2] * u_hat)))
+        dudy = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[0] * u_hat)))
+        dudz = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[1] * u_hat)))
+        dvdx = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[2] * v_hat)))
+        dvdy = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[0] * v_hat)))
+        dvdz = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[1] * v_hat)))
+        dwdx = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[2] * w_hat)))
+        dwdy = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[0] * w_hat)))
+        dwdz = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[1] * w_hat)))
+        grads = ((dudz, dudy, dudx), (dvdz, dvdy, dvdx), (dwdz, dwdy, dwdx))
+    else:
+        grads = (
+            np.gradient(u, z, y, x, axis=(0, 1, 2)),
+            np.gradient(v, z, y, x, axis=(0, 1, 2)),
+            np.gradient(w, z, y, x, axis=(0, 1, 2)),
+        )
 
     uadv = w * grads[0][0] + v * grads[0][1] + u * grads[0][2]
     vadv = w * grads[1][0] + v * grads[1][1] + u * grads[1][2]
