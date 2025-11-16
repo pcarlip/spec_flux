@@ -70,10 +70,10 @@ def sf_au(
     diffs = (dx, dy, dz)
 
     if spectral:
-        if cp.get_array_module(u) == cp:
-            from cupyx.scipy import fft
+        if cp.get_array_module(u) == cp:  # type: ignore
+            from cupyx.scipy import fft  # noqa: PLC0415
         else:
-            from scipy import fft
+            from scipy import fft  # noqa: PLC0415
         dk = 2 * np.pi / (len(x) * dx[1])
         dl = 2 * np.pi / (len(y) * dy[1])
         dm = 2 * np.pi / (len(z) * dz[1])
