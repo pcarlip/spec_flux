@@ -71,13 +71,16 @@ def sf_au(
     diffs = (dx, dy, dz)
 
     if spectral:
-        k_range = 2 * np.pi / dx
-        l_range = 2 * np.pi / dy
-        m_range = 2 * np.pi / dz
+        dk = 2 * np.pi / (len(x) * dx[1])
+        dl = 2 * np.pi / (len(y) * dy[1])
+        dm = 2 * np.pi / (len(z) * dz[1])
+        k_range = fft.fftshift(fft.fftfreq(len(x)) * len(x) * dk)
+        l_range = fft.fftshift(fft.fftfreq(len(y)) * len(y) * dl)
+        m_range = fft.fftshift(fft.fftfreq(len(z)) * len(z) * dm)
         u_hat = fft.fftshift(fft.fftn(u))
         v_hat = fft.fftshift(fft.fftn(v))
         w_hat = fft.fftshift(fft.fftn(w))
-        k_mesh = np.meshgrid(m_range, l_range, k_range)
+        k_mesh = np.meshgrid(l_range, m_range, k_range)
         dudx = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[2] * u_hat)))
         dudy = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[0] * u_hat)))
         dudz = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[1] * u_hat)))
