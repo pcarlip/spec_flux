@@ -1,7 +1,6 @@
 import cupy as cp
 import numpy as np
 from numba import njit, prange
-from scipy import fft
 
 from .roll import roll, roll_numba, roll_par
 
@@ -71,25 +70,29 @@ def sf_au(
     diffs = (dx, dy, dz)
 
     if spectral:
+        if cp.get_array_module(u) == cp:
+            from cupyx.scipy import fft
+        else:
+            from scipy import fft
         dk = 2 * np.pi / (len(x) * dx[1])
         dl = 2 * np.pi / (len(y) * dy[1])
         dm = 2 * np.pi / (len(z) * dz[1])
-        k_range = fft.fftshift(fft.fftfreq(len(x)) * len(x) * dk)
-        l_range = fft.fftshift(fft.fftfreq(len(y)) * len(y) * dl)
-        m_range = fft.fftshift(fft.fftfreq(len(z)) * len(z) * dm)
-        u_hat = fft.fftshift(fft.fftn(u))
-        v_hat = fft.fftshift(fft.fftn(v))
-        w_hat = fft.fftshift(fft.fftn(w))
+        k_range = fft.fftfreq(len(x)) * len(x) * dk
+        l_range = fft.fftfreq(len(y)) * len(y) * dl
+        m_range = fft.fftfreq(len(z)) * len(z) * dm
+        u_hat = fft.fftn(u)
+        v_hat = fft.fftn(v)
+        w_hat = fft.fftn(w)
         k_mesh = np.meshgrid(l_range, m_range, k_range)
-        dudx = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[2] * u_hat)))
-        dudy = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[0] * u_hat)))
-        dudz = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[1] * u_hat)))
-        dvdx = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[2] * v_hat)))
-        dvdy = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[0] * v_hat)))
-        dvdz = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[1] * v_hat)))
-        dwdx = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[2] * w_hat)))
-        dwdy = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[0] * w_hat)))
-        dwdz = np.real(fft.ifftn(fft.ifftshift(1j * k_mesh[1] * w_hat)))
+        dudx = np.real(fft.ifftn(1j * k_mesh[2] * u_hat))
+        dudy = np.real(fft.ifftn(1j * k_mesh[0] * u_hat))
+        dudz = np.real(fft.ifftn(1j * k_mesh[1] * u_hat))
+        dvdx = np.real(fft.ifftn(1j * k_mesh[2] * v_hat))
+        dvdy = np.real(fft.ifftn(1j * k_mesh[0] * v_hat))
+        dvdz = np.real(fft.ifftn(1j * k_mesh[1] * v_hat))
+        dwdx = np.real(fft.ifftn(1j * k_mesh[2] * w_hat))
+        dwdy = np.real(fft.ifftn(1j * k_mesh[0] * w_hat))
+        dwdz = np.real(fft.ifftn(1j * k_mesh[1] * w_hat))
         grads = ((dudz, dudy, dudx), (dvdz, dvdy, dvdx), (dwdz, dwdy, dwdx))
     else:
         grads = (
