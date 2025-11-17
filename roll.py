@@ -65,7 +65,7 @@ def roll_par(
     return out
 
 
-def roll(
+def roll_old(
     arr: ndarray,
     dz: int,
     dy: int,
@@ -92,3 +92,15 @@ def roll(
     else:
         out = shifted_y
     return out
+
+
+def roll(
+    arr: ndarray,
+    dz: int,
+    dy: int,
+    dx: int,
+    tmp1: ndarray,
+    tmp2: ndarray,
+    out: ndarray,
+) -> ndarray:
+    return np.roll(arr, shift=(-dz, -dy, -dx), axis=(0, 1, 2))
