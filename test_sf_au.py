@@ -120,3 +120,6 @@ def test_cupy_comp_spec() -> None:
     cp_sf = sf_au(cu, cv, cw, cx, cy, cz, True)
 
     assert np.isclose(np_sf[1], cp.asnumpy(cp_sf[1])).all()
+    assert np.isclose(np_sf[0][0], cp.asnumpy(cp_sf[0][0])).all()
+    assert np.isclose(np_sf[0][1], cp.asnumpy(cp_sf[0][1])).all()
+    assert np.isclose(np_sf[0][2], cp.asnumpy(cp_sf[0][2])).all()
