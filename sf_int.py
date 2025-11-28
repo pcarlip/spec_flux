@@ -134,6 +134,7 @@ def conv_lst_full(
     diffs: tuple[ndarray, ndarray, ndarray],
     sf: ndarray,
     transformation: Callable,
+    taper: bool = False,
 ) -> np.ndarray:
     """Integrate a structure function across all combinations of separations
     Compatible with sf_au and sf_ln, accepts numpy or cupy arrays
@@ -155,4 +156,31 @@ def conv_lst_full(
     float
         Spectral flux at each wavenumber k
     """
-    return np.array([conv_full(k, diffs, sf, transformation) for k in k_lst])
+    if not taper:
+        return np.array([conv_full(k, diffs, sf, transformation) for k in k_lst])
+    else:
+        return np.array([conv_full_taper(k, diffs, sf, transformation) for k in k_lst])
+
+
+def conv_full_taper(
+    k: float,
+    diffs: tuple[ndarray, ndarray, ndarray],
+    sf: ndarray,
+    transformation: Callable,
+) -> float:
+    """Internal function, implements integration for a single k value"""
+    z_lst, y_lst, x_lst = diffs
+    dz = z_lst[1] - z_lst[0]
+    dy = y_lst[1] - y_lst[0]
+    dx = x_lst[1] - x_lst[0]
+
+    integrand = np.empty_like(sf)
+
+    mesh = np.meshgrid(z_lst, y_lst, x_lst)
+    r = np.sqrt(mesh[0] ** 2 + mesh[1] ** 2 + mesh[2] ** 2)
+    rmax = np.max(r)
+    taper = np.sin((np.pi / 2) * (1 + r / rmax))
+    integrand = sf * taper * transformation(k, r) * dx * dy * dz
+    integrand[0, 0, 0] = 0.0
+
+    return np.sum(integrand)
