@@ -19,49 +19,29 @@ class SFType(StrEnum):
     LLL = "LLL"
 
 
-def conv_avg(
-    k: float, sf: dict[str, np.ndarray], sf_name: str, transformation: Callable
-) -> float:
-    """Internal function, implements integration along the directionally-averaged
-    structure function for a single k value"""
-    x = sf["x-diffs"]
-
-    sf_avg = np.mean(
-        [
-            sf[f"SF_{sf_name}_x"],
-            sf[f"SF_{sf_name}_y"],
-            sf[f"SF_{sf_name}_z"],
-        ],
-        axis=0,
-    )
-    integrand = np.empty_like(x)
-
-    for i, r in enumerate(x):
-        if r != 0:
-            integrand[i] = transformation(k, r) * sf_avg[i]
-        else:
-            integrand[i] = 0
-
-    return float(sp.integrate.simpson(integrand, x))
-
-
-def conv_axis(
+def conv_linear(
     k: float,
     sf: dict[str, np.ndarray],
     sf_name: str,
     transformation: Callable,
-    axis: Axis,
+    axis: Axis | None,
 ) -> float:
     """Internal function, implements integration along a single, specified axis
     for a single k value"""
     x = sf["x-diffs"]
 
-    if axis == Axis.x:
-        sf_val = sf[f"SF_{sf_name}_x"]
-    elif axis == Axis.y:
-        sf_val = sf[f"SF_{sf_name}_y"]
+    if axis is not None:
+        sf_val = sf[f"SF_{sf_name}_{axis.value}"]
     else:
-        sf_val = sf[f"SF_{sf_name}_z"]
+        sf_val = np.mean(
+            [
+                sf[f"SF_{sf_name}_x"],
+                sf[f"SF_{sf_name}_y"],
+                sf[f"SF_{sf_name}_z"],
+            ],
+            axis=0,
+        )
+
     integrand = np.empty_like(x)
 
     for i, r in enumerate(x):
@@ -101,10 +81,7 @@ def conv_lst(
     np.ndarray
         Spectral flux at each wavenumber k
     """
-    if axis is None:
-        return np.array([conv_avg(k, sf, sf_name, transformation) for k in k_lst])
-    else:
-        return np.array([conv_axis(k, sf, sf_name, transformation, axis) for k in k_lst])
+    return np.array([conv_linear(k, sf, sf_name, transformation, axis) for k in k_lst])
 
 
 def conv_full(
@@ -112,6 +89,7 @@ def conv_full(
     diffs: tuple[ndarray, ndarray, ndarray],
     sf: ndarray,
     transformation: Callable,
+    taper: bool,
 ) -> float:
     """Internal function, implements integration for a single k value"""
     z_lst, y_lst, x_lst = diffs
@@ -123,6 +101,11 @@ def conv_full(
 
     mesh = np.meshgrid(z_lst, y_lst, x_lst)
     r = np.sqrt(mesh[0] ** 2 + mesh[1] ** 2 + mesh[2] ** 2)
+    if taper:
+        rmax = np.max(r)
+        taper_arr = np.sin((np.pi / 2) * (1 + r / rmax))
+        sf *= taper_arr
+
     integrand = sf * transformation(k, r) * dx * dy * dz
     integrand[0, 0, 0] = 0.0
 
@@ -156,31 +139,4 @@ def conv_lst_full(
     float
         Spectral flux at each wavenumber k
     """
-    if not taper:
-        return np.array([conv_full(k, diffs, sf, transformation) for k in k_lst])
-    else:
-        return np.array([conv_full_taper(k, diffs, sf, transformation) for k in k_lst])
-
-
-def conv_full_taper(
-    k: float,
-    diffs: tuple[ndarray, ndarray, ndarray],
-    sf: ndarray,
-    transformation: Callable,
-) -> float:
-    """Internal function, implements integration for a single k value"""
-    z_lst, y_lst, x_lst = diffs
-    dz = z_lst[1] - z_lst[0]
-    dy = y_lst[1] - y_lst[0]
-    dx = x_lst[1] - x_lst[0]
-
-    integrand = np.empty_like(sf)
-
-    mesh = np.meshgrid(z_lst, y_lst, x_lst)
-    r = np.sqrt(mesh[0] ** 2 + mesh[1] ** 2 + mesh[2] ** 2)
-    rmax = np.max(r)
-    taper = np.sin((np.pi / 2) * (1 + r / rmax))
-    integrand = sf * taper * transformation(k, r) * dx * dy * dz
-    integrand[0, 0, 0] = 0.0
-
-    return np.sum(integrand)
+    return np.array([conv_full(k, diffs, sf, transformation, taper) for k in k_lst])
