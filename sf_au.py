@@ -93,17 +93,14 @@ def sf_au(
         dwdx = np.real(fft.ifftn(1j * k_mesh[2] * w_hat))
         dwdy = np.real(fft.ifftn(1j * k_mesh[0] * w_hat))
         dwdz = np.real(fft.ifftn(1j * k_mesh[1] * w_hat))
-        grads = ((dudz, dudy, dudx), (dvdz, dvdy, dvdx), (dwdz, dwdy, dwdx))
     else:
-        grads = (
-            np.gradient(u, z, y, x, axis=(0, 1, 2)),
-            np.gradient(v, z, y, x, axis=(0, 1, 2)),
-            np.gradient(w, z, y, x, axis=(0, 1, 2)),
-        )
+        dudz, dudy, dudx = np.gradient(u, z, y, x, axis=(0, 1, 2))
+        dvdz, dvdy, dvdx = np.gradient(v, z, y, x, axis=(0, 1, 2))
+        dwdz, dwdy, dwdx = np.gradient(w, z, y, x, axis=(0, 1, 2))
 
-    uadv = w * grads[0][0] + v * grads[0][1] + u * grads[0][2]
-    vadv = w * grads[1][0] + v * grads[1][1] + u * grads[1][2]
-    wadv = w * grads[2][0] + v * grads[2][1] + u * grads[2][2]
+    uadv = u * dudx + v * dudy + w * dudz
+    vadv = u * dvdx + v * dvdy + w * dvdz
+    wadv = u * dwdx + v * dwdy + w * dwdz
 
     tmp1 = np.zeros_like(u)
     tmp2 = np.zeros_like(u)
