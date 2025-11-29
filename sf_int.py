@@ -1,9 +1,10 @@
 from collections.abc import Callable, Iterable
-from enum import StrEnum
+from enum import Enum, StrEnum
 
 import cupy as cp
 import numpy as np
 import scipy as sp
+from scipy.integrate import simpson
 
 type ndarray = np.ndarray | cp.ndarray  # noqa: PYI042
 
@@ -17,6 +18,11 @@ class Axis(StrEnum):
 class SFType(StrEnum):
     Au = "Au"
     LLL = "LLL"
+
+
+class IntMethod(Enum):
+    simpson = 0
+    addition = 1
 
 
 def conv_linear(
@@ -50,7 +56,7 @@ def conv_linear(
         else:
             integrand[i] = 0
 
-    return float(sp.integrate.simpson(integrand, x))
+    return float(simpson(integrand, x))
 
 
 def conv_lst(
@@ -90,6 +96,7 @@ def conv_full(
     sf: ndarray,
     transformation: Callable,
     taper: bool,
+    int_method: IntMethod,
 ) -> float:
     """Internal function, implements integration for a single k value"""
     z_lst, y_lst, x_lst = diffs
@@ -108,10 +115,14 @@ def conv_full(
     else:
         sf_var = sf
 
-    integrand = sf_var * transformation(k, r) * dx * dy * dz
+    integrand = sf_var * transformation(k, r)
     integrand[0, 0, 0] = 0.0
 
-    return np.sum(integrand)
+    if int_method == IntMethod.addition:
+        return np.sum(integrand) * dx * dy * dz
+    else:
+        assert int_method == IntMethod.simpson
+        return simpson(simpson(simpson(integrand, dx=dx), dx=dy), dx=dz)  # type: ignore
 
 
 def conv_lst_full(
@@ -120,6 +131,7 @@ def conv_lst_full(
     sf: ndarray,
     transformation: Callable,
     taper: bool = False,
+    int_method: IntMethod = IntMethod.simpson,
 ) -> np.ndarray:
     """Integrate a structure function across all combinations of separations
     Compatible with sf_au and sf_ln, accepts numpy or cupy arrays
@@ -141,4 +153,6 @@ def conv_lst_full(
     float
         Spectral flux at each wavenumber k
     """
-    return np.array([conv_full(k, diffs, sf, transformation, taper) for k in k_lst])
+    return np.array(
+        [conv_full(k, diffs, sf, transformation, taper, int_method) for k in k_lst]
+    )
