@@ -104,9 +104,11 @@ def conv_full(
     if taper:
         rmax = np.max(r)
         taper_arr = np.sin((np.pi / 2) * (1 + r / rmax))
-        sf *= taper_arr
+        sf_var = sf * taper_arr
+    else:
+        sf_var = sf
 
-    integrand = sf * transformation(k, r) * dx * dy * dz
+    integrand = sf_var * transformation(k, r) * dx * dy * dz
     integrand[0, 0, 0] = 0.0
 
     return np.sum(integrand)
