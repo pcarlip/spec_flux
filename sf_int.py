@@ -110,7 +110,7 @@ def conv_full(
     r = np.sqrt(mesh[0] ** 2 + mesh[1] ** 2 + mesh[2] ** 2)
     if taper:
         rmax = np.max(r)
-        taper_arr = np.sin((np.pi / 2) * (1 + r / rmax))
+        taper_arr = np.sin((np.pi / 2) * (1 + r / rmax)) ** 2
         sf_var = sf * taper_arr
     else:
         sf_var = sf
