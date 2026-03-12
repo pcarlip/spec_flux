@@ -179,7 +179,10 @@ def fourier_prep(
 
 
 def fourier_int(
-    data: SimData | SimDataLite, pi_int: np.ndarray, klim: float, k_grid: np.ndarray
+    data: SimData | SimDataLite,
+    pi_int: np.ndarray | cp.ndarray,
+    klim: float,
+    k_grid: np.ndarray | cp.ndarray,
 ) -> float:
     """Calculate spectral flux of energy dissipation through a fourier transform
 
@@ -202,8 +205,14 @@ def fourier_int(
     L = N * dx
     dk = 2 * np.pi / L
 
-    masked_array = np.where(k_grid <= klim**2, pi_int, np.zeros_like(pi_int))
+    xp = cp.get_array_module(data.u)
+
+    masked_array = xp.where(k_grid <= klim**2, pi_int, xp.zeros_like(pi_int))
 
     # I think the L**3 is a normalization condition, I'm not sure why I need the 2π
     # but it doesn't match structure function methods without it
-    return np.sum(masked_array) * dk**3 / (2 * np.pi * L**3)
+    out = xp.sum(masked_array) * dk**3 / (2 * np.pi * L**3)
+    if xp.__name__ == "cupy":
+        return out.item()
+    else:
+        return out
