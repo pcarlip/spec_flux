@@ -211,8 +211,4 @@ def fourier_int(
 
     # I think the L**3 is a normalization condition, I'm not sure why I need the 2π
     # but it doesn't match structure function methods without it
-    out = xp.sum(masked_array) * dk**3 / (2 * np.pi * L**3)
-    if xp.__name__ == "cupy":
-        return out.item()
-    else:
-        return out
+    return float(xp.sum(masked_array) * dk**3 / (2 * np.pi * L**3))
