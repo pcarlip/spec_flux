@@ -1,5 +1,5 @@
 import cupy as cp
-from cupyx.scipy.ndimage import gaussian_filter
+from cupyx.scipy.ndimage import gaussian_filter, uniform_filter
 
 
 def pi_cg_gauss(
@@ -33,7 +33,7 @@ def pi_cg_gauss(
     for i in range(3):
         for j in range(3):
             tau_1 = gaussian_filter(vel_arrs[i] * vel_arrs[j], size, mode="wrap")
-            tau_2 = gaussian_filter(vel_arrs[i], size, mode="wrap") * gaussian_filter(
+            tau_2 = gaussian_filter(vel_arrs[i], size, mode="wrap") * gaussian_filter(  # type: ignore
                 vel_arrs[j], size, mode="wrap"
             )
             tau = tau_1 - tau_2
