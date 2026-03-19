@@ -1,3 +1,5 @@
+from enum import Enum
+
 import cupy as cp
 import numpy as np
 from numba import njit, prange
@@ -5,6 +7,12 @@ from numba import njit, prange
 from .roll import roll, roll_numba, roll_par
 
 type ndarray = np.ndarray | cp.ndarray  # noqa: PYI042
+
+
+class Axis(Enum):
+    z = 0
+    y = 1
+    x = 2
 
 
 @cp.fuse
@@ -48,7 +56,8 @@ def sf_au(
     z : ndarray
         1d array of z positions
     spectral : bool
-        Whether to use spectral calculation of gradients (default false)
+        Whether to use spectral calculation of gradients
+        (default false, true is currently broken)
 
     Returns
     -------
@@ -117,6 +126,106 @@ def sf_au(
                     dav = roll(vadv, i, j, k, tmp1, tmp2, tmp3) - vadv
                     daw = roll(wadv, i, j, k, tmp1, tmp2, tmp3) - wadv
                     sf[i, j, k] = np.mean(sf_au_kernel(du, dv, dw, dau, dav, daw))
+
+    return (diffs, sf)
+
+
+def sf_au_dir(
+    u: ndarray,
+    v: ndarray,
+    w: ndarray,
+    x: ndarray,
+    y: ndarray,
+    z: ndarray,
+    axis: Axis,
+    spectral: bool = False,
+) -> tuple[ndarray, ndarray]:
+    """Calculate the advective structure function on 3d velocity data
+    Use separations in a specified direction, assume periodic data, accepts numpy or cupy arrays
+    note: x is the third index in the velocity and output arrays, z is the first
+
+    Parameters
+    ----------
+    u : ndarray
+        3d array of x velocities
+    v : ndarray
+        3d array of y velocities
+    w : ndarray
+        3d array of z velocities
+    x : ndarray
+        1d array of x positions
+    y : ndarray
+        1d array of y positions
+    z : ndarray
+        1d array of z positions
+    axis : Axis
+        Axis along which separations are used
+    spectral : bool
+        Whether to use spectral calculation of gradients
+        (default false, true is currently broken)
+
+    Returns
+    -------
+    ndarray
+        1d arrays of spacing values in the specified axis
+    ndarray
+        structure function value at each spacing
+    """
+    L = len(z) // 2
+    M = len(y) // 2
+    N = len(x) // 2
+
+    count = (L, M, N)[axis.value]
+
+    sf = np.zeros(count, np.float64, like=u)
+
+    dz = z[:L] - z[0]
+    dy = y[:M] - y[0]
+    dx = x[:N] - x[0]
+
+    diffs = (dx, dy, dz)[axis.value]
+
+    if spectral:
+        if cp.get_array_module(u) == cp:  # type: ignore
+            from cupyx.scipy import fft  # noqa: PLC0415
+        else:
+            from scipy import fft  # noqa: PLC0415
+        dk = 2 * np.pi / (len(x) * dx[1])
+        dl = 2 * np.pi / (len(y) * dy[1])
+        dm = 2 * np.pi / (len(z) * dz[1])
+        k_range = fft.fftfreq(len(x)) * len(x) * dk
+        l_range = fft.fftfreq(len(y)) * len(y) * dl
+        m_range = fft.fftfreq(len(z)) * len(z) * dm
+        u_hat = fft.fftn(u)
+        v_hat = fft.fftn(v)
+        w_hat = fft.fftn(w)
+        k_mesh = np.meshgrid(l_range, m_range, k_range)
+        dudx = np.real(fft.ifftn(1j * k_mesh[2] * u_hat))
+        dudy = np.real(fft.ifftn(1j * k_mesh[0] * u_hat))
+        dudz = np.real(fft.ifftn(1j * k_mesh[1] * u_hat))
+        dvdx = np.real(fft.ifftn(1j * k_mesh[2] * v_hat))
+        dvdy = np.real(fft.ifftn(1j * k_mesh[0] * v_hat))
+        dvdz = np.real(fft.ifftn(1j * k_mesh[1] * v_hat))
+        dwdx = np.real(fft.ifftn(1j * k_mesh[2] * w_hat))
+        dwdy = np.real(fft.ifftn(1j * k_mesh[0] * w_hat))
+        dwdz = np.real(fft.ifftn(1j * k_mesh[1] * w_hat))
+    else:
+        dudz, dudy, dudx = np.gradient(u, z, y, x, axis=(0, 1, 2))
+        dvdz, dvdy, dvdx = np.gradient(v, z, y, x, axis=(0, 1, 2))
+        dwdz, dwdy, dwdx = np.gradient(w, z, y, x, axis=(0, 1, 2))
+
+    uadv = u * dudx + v * dudy + w * dudz
+    vadv = u * dvdx + v * dvdy + w * dvdz
+    wadv = u * dwdx + v * dwdy + w * dwdz
+
+    for i in range(count):
+        du = np.roll(u, -i, axis=axis.value) - u
+        dv = np.roll(v, -i, axis=axis.value) - v
+        dw = np.roll(w, -i, axis=axis.value) - w
+        dau = np.roll(uadv, -i, axis=axis.value) - uadv
+        dav = np.roll(vadv, -i, axis=axis.value) - vadv
+        daw = np.roll(wadv, -i, axis=axis.value) - wadv
+        sf[i] = np.mean(sf_au_kernel(du, dv, dw, dau, dav, daw))
 
     return (diffs, sf)
 
