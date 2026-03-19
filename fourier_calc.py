@@ -6,36 +6,7 @@ import cupyx.scipy.fft as cufft
 import numpy as np
 from scipy import fft
 
-
-@dataclass
-class SimData:
-    """A wrapper to store the relevant data from the NetCDF at a particular time step,
-    including pre-calculated advection components"""
-
-    u: np.ndarray | cp.ndarray
-    v: np.ndarray | cp.ndarray
-    w: np.ndarray | cp.ndarray
-    uadv: np.ndarray | cp.ndarray
-    vadv: np.ndarray | cp.ndarray
-    wadv: np.ndarray | cp.ndarray
-    x: np.ndarray | cp.ndarray
-
-
-@dataclass
-class SimDataLite:
-    """A wrapper to store the relevant data from the NetCDF at a particular time step,
-    not including advection components"""
-
-    u: np.ndarray | cp.ndarray
-    v: np.ndarray | cp.ndarray
-    w: np.ndarray | cp.ndarray
-    x: np.ndarray | cp.ndarray
-
-
-class GradMethod(Enum):
-    oceananigans = 1
-    spectral = 2
-    numpy = 3
+from .utils import GradMethod, SimData, SimDataLite
 
 
 def spectral_der_gpu(vel_hat: cp.ndarray, k_grid: cp.ndarray) -> cp.ndarray:

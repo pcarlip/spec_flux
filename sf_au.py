@@ -5,14 +5,7 @@ import numpy as np
 from numba import njit, prange
 
 from .roll import roll, roll_numba, roll_par
-
-type ndarray = np.ndarray | cp.ndarray  # noqa: PYI042
-
-
-class Axis(Enum):
-    z = 0
-    y = 1
-    x = 2
+from .utils import Axis, ndarray
 
 
 @cp.fuse

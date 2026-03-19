@@ -3,10 +3,7 @@ import numpy as np
 from numba import njit, prange
 
 from .roll import roll, roll_numba, roll_par
-from .sf_au import Axis
-
-type ndarray = np.ndarray | cp.ndarray  # noqa: PYI042
-
+from .utils import Axis, ndarray
 
 # steps:
 # set of motion amounts: can just use motion of i,j,k for range N//2

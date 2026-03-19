@@ -1,28 +1,9 @@
 from collections.abc import Callable, Iterable
-from enum import Enum, StrEnum
 
-import cupy as cp
 import numpy as np
-import scipy as sp
 from scipy.integrate import simpson
 
-type ndarray = np.ndarray | cp.ndarray  # noqa: PYI042
-
-
-class Axis(StrEnum):
-    x = "x"
-    y = "y"
-    z = "z"
-
-
-class SFType(StrEnum):
-    Au = "Au"
-    LLL = "LLL"
-
-
-class IntMethod(Enum):
-    simpson = 0
-    addition = 1
+from .utils import IntMethod, StrAxis, ndarray
 
 
 def conv_linear(
@@ -30,7 +11,7 @@ def conv_linear(
     sf: dict[str, np.ndarray],
     sf_name: str,
     transformation: Callable,
-    axis: Axis | None,
+    axis: StrAxis | None,
 ) -> float:
     """Internal function, implements integration along a single, specified axis
     for a single k value"""
@@ -64,7 +45,7 @@ def conv_lst(
     sf: dict[str, np.ndarray],
     sf_name: str,
     transformation: Callable,
-    axis: Axis | None = None,
+    axis: StrAxis | None = None,
 ) -> np.ndarray:
     """Integrate a structure function along an axis to estimate spectral flux
 
