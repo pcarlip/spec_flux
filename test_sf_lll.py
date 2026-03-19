@@ -5,7 +5,8 @@ import fluidsf
 import numpy as np
 
 sys.path.append("..")
-from numerics.sf_ln import sf_ln
+from numerics.sf_au import Axis
+from numerics.sf_ln import sf_ln, sf_ln_dir
 
 
 def test_minimal() -> None:
@@ -61,6 +62,27 @@ def test_fluidsf_comp() -> None:
     assert np.isclose(full_sf[1][:, 0, 0], fsf["SF_LLL_z"]).all()
 
 
+def test_fluidsf_comp_dir() -> None:
+    """Structure function results along only one axis should match fluidsf"""
+    rng = np.random.default_rng(31415)
+    u = rng.normal(size=(10, 11, 12))
+    v = rng.normal(size=(10, 11, 12))
+    w = rng.normal(size=(10, 11, 12))
+    x = np.arange(12)
+    y = np.arange(11)
+    z = np.arange(10)
+
+    full_sf = (
+        sf_ln_dir(u, v, w, x, y, z, Axis.x),
+        sf_ln_dir(u, v, w, x, y, z, Axis.y),
+        sf_ln_dir(u, v, w, x, y, z, Axis.z),
+    )
+    fsf = fluidsf.generate_structure_functions_3d(u, v, w, x, y, z, ["LLL"])
+    assert np.isclose(full_sf[0][1], fsf["SF_LLL_x"]).all()
+    assert np.isclose(full_sf[1][1], fsf["SF_LLL_y"]).all()
+    assert np.isclose(full_sf[2][1], fsf["SF_LLL_z"]).all()
+
+
 def test_cupy_comp() -> None:
     """Cupy and numpy calculations should agree"""
     rng = np.random.default_rng(31415)
@@ -85,3 +107,36 @@ def test_cupy_comp() -> None:
     assert np.isclose(np_sf[0][0], cp.asnumpy(cp_sf[0][0])).all()
     assert np.isclose(np_sf[0][1], cp.asnumpy(cp_sf[0][1])).all()
     assert np.isclose(np_sf[0][2], cp.asnumpy(cp_sf[0][2])).all()
+
+
+def test_cupy_comp_dir() -> None:
+    """Cupy and numpy calculations should agree"""
+    rng = np.random.default_rng(31415)
+    u = rng.normal(size=(10, 11, 12))
+    v = rng.normal(size=(10, 11, 12))
+    w = rng.normal(size=(10, 11, 12))
+    x = np.arange(12)
+    y = np.arange(11)
+    z = np.arange(10)
+
+    cu = cp.array(u)
+    cv = cp.array(v)
+    cw = cp.array(w)
+    cx = cp.array(x)
+    cy = cp.array(y)
+    cz = cp.array(z)
+
+    np_sf = (
+        sf_ln_dir(u, v, w, x, y, z, Axis.x),
+        sf_ln_dir(u, v, w, x, y, z, Axis.y),
+        sf_ln_dir(u, v, w, x, y, z, Axis.z),
+    )
+    cp_sf = (
+        sf_ln_dir(cu, cv, cw, cx, cy, cz, Axis.x),
+        sf_ln_dir(cu, cv, cw, cx, cy, cz, Axis.y),
+        sf_ln_dir(cu, cv, cw, cx, cy, cz, Axis.z),
+    )
+
+    for i in range(3):
+        for j in range(2):
+            assert np.isclose(np_sf[i][j], cp.asnumpy(cp_sf[i][j])).all()
