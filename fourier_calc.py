@@ -9,7 +9,8 @@ from scipy import fft
 
 @dataclass
 class SimData:
-    """A wrapper to store the relevant data from the NetCDF at a particular time step"""
+    """A wrapper to store the relevant data from the NetCDF at a particular time step,
+    including pre-calculated advection components"""
 
     u: np.ndarray | cp.ndarray
     v: np.ndarray | cp.ndarray
@@ -22,7 +23,8 @@ class SimData:
 
 @dataclass
 class SimDataLite:
-    """A wrapper to store the relevant data from the NetCDF at a particular time step"""
+    """A wrapper to store the relevant data from the NetCDF at a particular time step,
+    not including advection components"""
 
     u: np.ndarray | cp.ndarray
     v: np.ndarray | cp.ndarray
@@ -37,16 +39,63 @@ class GradMethod(Enum):
 
 
 def spectral_der_gpu(vel_hat: cp.ndarray, k_grid: cp.ndarray) -> cp.ndarray:
+    """Approximate dv/dx as IFT(ik FT(v)), with cupy acceleration
+
+    Parameters
+    ----------
+    vel_hat : cp.ndarray
+        Fourier transform of a velocity component
+    k_grid : cp.ndarray
+        meshgrid component of k values along an axis
+
+    Returns
+    -------
+    cp.ndarray
+        Realspace derivative of velocity with respect to the direction from the k-grid
+    """
     return cp.real(cufft.ifftn(cufft.ifftshift(1j * k_grid * vel_hat)))
 
 
 def spectral_der_cpu(vel_hat: np.ndarray, k_grid: np.ndarray) -> np.ndarray:
+    """Approximate dv/dx as IFT(ik FT(v))
+
+    Parameters
+    ----------
+    vel_hat : np.ndarray
+        Fourier transform of a velocity component
+    k_grid : np.ndarray
+        meshgrid component of k values along an axis
+
+    Returns
+    -------
+    np.ndarray
+        Realspace derivative of velocity with respect to the direction from the k-grid
+    """
     return np.real(fft.ifftn(fft.ifftshift(1j * k_grid * vel_hat)))
 
 
 def pi_int_dir_spectral_gpu(
     vel: cp.ndarray, dx: float, data: SimData | SimDataLite, k_range: cp.ndarray
 ) -> cp.ndarray:
+    """Generate a component of  array to integrate: Re[FT(u)* • FT((u•∇)u)],
+    with cupy acceleration, using spectral estimate of gradients
+
+    Parameters
+    ----------
+    vel : cp.ndarray
+        Realspace velocity component
+    dx : float
+        grid spacing
+    data : SimData | SimDataLite
+        Object containing realspace velocity components
+    k_range : cp.ndarray
+        Range of k-values associated with the grid size
+
+    Returns
+    -------
+    cp.ndarray
+        Directional component of Re[FT(u)* • FT((u•∇)u)]
+    """
     k_mesh = cp.meshgrid(k_range, k_range, k_range)
     vel_hat = cufft.fftshift(cufft.fftn(vel))
     adv_realspace = spectral_der_gpu(vel_hat, k_mesh[2]) * data.u  # u d(vel)/dx
@@ -60,6 +109,26 @@ def pi_int_dir_spectral_gpu(
 def pi_int_dir_spectral_cpu(
     vel: np.ndarray, dx: float, data: SimData | SimDataLite, k_range: np.ndarray
 ) -> np.ndarray:
+    """Generate a component of  array to integrate: Re[FT(u)* • FT((u•∇)u)],
+    using spectral estimate of gradients
+
+    Parameters
+    ----------
+    vel : np.ndarray
+        Realspace velocity component
+    dx : float
+        grid spacing
+    data : SimData | SimDataLite
+        Object containing realspace velocity components
+    k_range : np.ndarray
+        Range of k-values associated with the grid size
+
+    Returns
+    -------
+    np.ndarray
+        Directional component of Re[FT(u)* • FT((u•∇)u)]
+    """
+
     k_mesh = np.meshgrid(k_range, k_range, k_range)
     vel_hat = fft.fftshift(fft.fftn(vel))
     adv_realspace = spectral_der_cpu(vel_hat, k_mesh[2]) * data.u  # u d(vel)/dx
@@ -73,6 +142,23 @@ def pi_int_dir_spectral_cpu(
 def pi_int_dir_np_gpu(
     vel: cp.ndarray, dx: float, data: SimData | SimDataLite
 ) -> cp.ndarray:
+    """Generate a component of  array to integrate: Re[FT(u)* • FT((u•∇)u)],
+    with cupy acceleration, using numpy finite element estimate of gradients
+
+    Parameters
+    ----------
+    vel : cp.ndarray
+        Realspace velocity component
+    dx : float
+        grid spacing
+    data : SimData | SimDataLite
+        Object containing realspace velocity components
+
+    Returns
+    -------
+    cp.ndarray
+        Directional component of Re[FT(u)* • FT((u•∇)u)]
+    """
     adv_realspace = cp.gradient(vel, dx, axis=2) * data.u
     adv_realspace += cp.gradient(vel, dx, axis=1) * data.v
     adv_realspace += cp.gradient(vel, dx, axis=0) * data.w
@@ -84,6 +170,23 @@ def pi_int_dir_np_gpu(
 def pi_int_dir_np_cpu(
     vel: np.ndarray, dx: float, data: SimData | SimDataLite
 ) -> np.ndarray:
+    """Generate a component of  array to integrate: Re[FT(u)* • FT((u•∇)u)],
+    using numpy finite element estimate of gradients
+
+    Parameters
+    ----------
+    vel : np.ndarray
+        Realspace velocity component
+    dx : float
+        grid spacing
+    data : SimData | SimDataLite
+        Object containing realspace velocity components
+
+    Returns
+    -------
+    np.ndarray
+        Directional component of Re[FT(u)* • FT((u•∇)u)]
+    """
     adv_realspace = np.gradient(vel, dx, axis=2) * data.u
     adv_realspace += np.gradient(vel, dx, axis=1) * data.v
     adv_realspace += np.gradient(vel, dx, axis=0) * data.w
@@ -100,6 +203,23 @@ def pi_int_dir_ocean_gpu(vel: cp.ndarray, dx: float, adv: cp.ndarray) -> cp.ndar
 
 
 def pi_int_dir_ocean_cpu(vel: np.ndarray, dx: float, adv: np.ndarray) -> np.ndarray:
+    """Generate a component of  array to integrate: Re[FT(u)* • FT((u•∇)u)],
+    using provided gradients (e.g. calculated during the simulation)
+
+    Parameters
+    ----------
+    vel : np.ndarray
+        Realspace velocity component
+    dx : float
+        grid spacing
+    adv : np.ndarray
+        Realspace component of advection u•∇u
+
+    Returns
+    -------
+    np.ndarray
+        Directional component of Re[FT(u)* • FT((u•∇)u)]
+    """
     adv_realspace = adv
     adv_spec = fft.fftshift(fft.fftn(adv_realspace) * dx**3 / (2 * np.pi))
     vel_conj = fft.fftshift(np.conj(fft.fftn(vel)) * dx**3 / (2 * np.pi))
