@@ -3,6 +3,7 @@ import numpy as np
 from numba import njit, prange
 
 from .roll import roll, roll_numba, roll_par
+from .sf_au import Axis
 
 type ndarray = np.ndarray | cp.ndarray  # noqa: PYI042
 
@@ -98,6 +99,70 @@ def sf_ln(
                     dv = roll(v, i, j, k, tmp1, tmp2, tmp3) - v
                     dw = roll(w, i, j, k, tmp1, tmp2, tmp3) - w
                     sf[i, j, k] = np.mean(sf_kernel(du, dv, dw, i, j, k, r, order))
+
+    return (diffs, sf)
+
+
+def sf_ln_dir(
+    u: ndarray,
+    v: ndarray,
+    w: ndarray,
+    x: ndarray,
+    y: ndarray,
+    z: ndarray,
+    axis: Axis,
+    order: int = 3,
+) -> tuple[ndarray, ndarray]:
+    """Calculate a longitudinal structure function of an arbitrary order on 3d velocity data
+    Use separations along one axis, assume periodic data, accepts numpy or cupy arrays
+    note: convention is that z is the first axis of the velocity arrays, x is the third
+
+    Parameters
+    ----------
+    u : ndarray
+        3d array of x velocities
+    v : ndarray
+        3d array of y velocities
+    w : ndarray
+        3d array of z velocities
+    x : ndarray
+        1d array of x positions
+    y : ndarray
+        1d array of y positions
+    z : ndarray
+        1d array of z positions
+    axis: Axis
+        Axis along which separations are used
+    order : int
+        power of the velocity differences (e.g. use SF_LL or LLL)
+        Default value is 3 (LLL)
+
+    Returns
+    -------
+    ndarray
+        1d arrays of spacing values along specified axis
+    ndarray
+        structure function value at each spacing
+    """
+    xp = cp.get_array_module(u)
+
+    L = len(z) // 2
+    M = len(y) // 2
+    N = len(x) // 2
+    count = (L, M, N)[axis.value]
+
+    sf = xp.zeros(count)
+
+    dz = z[:L] - z[0]
+    dy = y[:M] - y[0]
+    dx = x[:N] - x[0]
+
+    diffs = (dz, dy, dx)[axis.value]
+
+    vel = (w, v, u)[axis.value]
+
+    for i in range(1, count):
+        sf[i] = xp.mean((xp.roll(vel, -i, axis.value) - vel) ** order)
 
     return (diffs, sf)
 
