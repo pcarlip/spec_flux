@@ -5,7 +5,7 @@ import fluidsf
 import numpy as np
 
 sys.path.append("..")
-from numerics.sf_au import sf_au
+from numerics.sf_au import Axis, sf_au, sf_au_dir
 
 
 def test_minimal() -> None:
@@ -61,7 +61,29 @@ def test_fluidsf_comp() -> None:
     assert np.isclose(full_sf[1][:, 0, 0], fsf["SF_advection_velocity_z"]).all()
 
 
-def test_fluidsf_comp_spec() -> None:
+def test_fluidsf_comp_dir() -> None:
+    """Structure function results along only one axis should match fluidsf"""
+    rng = np.random.default_rng(31415)
+    u = rng.normal(size=(10, 11, 12))
+    v = rng.normal(size=(10, 11, 12))
+    w = rng.normal(size=(10, 11, 12))
+    x = np.arange(12)
+    y = np.arange(11)
+    z = np.arange(10)
+
+    fsf = fluidsf.generate_structure_functions_3d(u, v, w, x, y, z, ["ASF_V"])
+    assert np.isclose(
+        sf_au_dir(u, v, w, x, y, z, Axis.x)[1], fsf["SF_advection_velocity_x"]
+    ).all()
+    assert np.isclose(
+        sf_au_dir(u, v, w, x, y, z, Axis.y)[1], fsf["SF_advection_velocity_y"]
+    ).all()
+    assert np.isclose(
+        sf_au_dir(u, v, w, x, y, z, Axis.z)[1], fsf["SF_advection_velocity_z"]
+    ).all()
+
+
+def test_comp_spec() -> None:
     """Structure function results along only one axis should match fluidsf"""
     rng = np.random.default_rng(31415)
     u = rng.normal(size=(10, 11, 12))
@@ -72,7 +94,22 @@ def test_fluidsf_comp_spec() -> None:
     z = np.arange(10)
 
     full_sf_spec = sf_au(u, v, w, x, y, z, True)
-    full_sf = sf_au(u, v, w, x, y, z, True)
+    full_sf = sf_au(u, v, w, x, y, z, False)
+    assert np.isclose(full_sf[1], full_sf_spec[1]).all()
+
+
+def test_comp_spec_dir() -> None:
+    """Structure function results along only one axis should match fluidsf"""
+    rng = np.random.default_rng(31415)
+    u = rng.normal(size=(10, 11, 12))
+    v = rng.normal(size=(10, 11, 12))
+    w = rng.normal(size=(10, 11, 12))
+    x = np.arange(12)
+    y = np.arange(11)
+    z = np.arange(10)
+
+    full_sf_spec = sf_au_dir(u, v, w, x, y, z, Axis.x, True)
+    full_sf = sf_au_dir(u, v, w, x, y, z, Axis.x, False)
     assert np.isclose(full_sf[1], full_sf_spec[1]).all()
 
 
