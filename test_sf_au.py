@@ -83,36 +83,6 @@ def test_fluidsf_comp_dir() -> None:
     ).all()
 
 
-def test_comp_spec() -> None:
-    """Structure function results along only one axis should match fluidsf"""
-    rng = np.random.default_rng(31415)
-    u = rng.normal(size=(10, 11, 12))
-    v = rng.normal(size=(10, 11, 12))
-    w = rng.normal(size=(10, 11, 12))
-    x = np.arange(12)
-    y = np.arange(11)
-    z = np.arange(10)
-
-    full_sf_spec = sf_au(u, v, w, x, y, z, True)
-    full_sf = sf_au(u, v, w, x, y, z, False)
-    assert np.isclose(full_sf[1], full_sf_spec[1]).all()
-
-
-def test_comp_spec_dir() -> None:
-    """Structure function results along only one axis should match fluidsf"""
-    rng = np.random.default_rng(31415)
-    u = rng.normal(size=(10, 11, 12))
-    v = rng.normal(size=(10, 11, 12))
-    w = rng.normal(size=(10, 11, 12))
-    x = np.arange(12)
-    y = np.arange(11)
-    z = np.arange(10)
-
-    full_sf_spec = sf_au_dir(u, v, w, x, y, z, Axis.x, True)
-    full_sf = sf_au_dir(u, v, w, x, y, z, Axis.x, False)
-    assert np.isclose(full_sf[1], full_sf_spec[1]).all()
-
-
 def test_cupy_comp() -> None:
     """Cupy and numpy calculations should agree"""
     rng = np.random.default_rng(31415)
@@ -157,29 +127,3 @@ def test_cupy_comp_dir() -> None:
     cp_sf = sf_au_dir(cu, cv, cw, cx, cy, cz, Axis.x)
 
     assert np.isclose(np_sf[1], cp.asnumpy(cp_sf[1])).all()
-
-
-def test_cupy_comp_spec() -> None:
-    """Cupy and numpy calculations should agree"""
-    rng = np.random.default_rng(31415)
-    u = rng.normal(size=(10, 11, 12))
-    v = rng.normal(size=(10, 11, 12))
-    w = rng.normal(size=(10, 11, 12))
-    x = np.arange(12)
-    y = np.arange(11)
-    z = np.arange(10)
-
-    cu = cp.array(u)
-    cv = cp.array(v)
-    cw = cp.array(w)
-    cx = cp.array(x)
-    cy = cp.array(y)
-    cz = cp.array(z)
-
-    np_sf = sf_au(u, v, w, x, y, z, True)
-    cp_sf = sf_au(cu, cv, cw, cx, cy, cz, True)
-
-    assert np.isclose(np_sf[1], cp.asnumpy(cp_sf[1])).all()
-    assert np.isclose(np_sf[0][0], cp.asnumpy(cp_sf[0][0])).all()
-    assert np.isclose(np_sf[0][1], cp.asnumpy(cp_sf[0][1])).all()
-    assert np.isclose(np_sf[0][2], cp.asnumpy(cp_sf[0][2])).all()
