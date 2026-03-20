@@ -4,7 +4,7 @@ import cupy as cp
 import numpy as np
 from numba import njit, prange
 
-from .roll import roll, roll_numba, roll_par
+from .roll import roll_numba, roll_par
 from .utils import Axis, ndarray
 
 
@@ -28,7 +28,6 @@ def sf_au(
     x: ndarray,
     y: ndarray,
     z: ndarray,
-    spectral: bool = False,
 ) -> tuple[tuple[ndarray, ndarray, ndarray], ndarray]:
     """Calculate the advective structure function on 3d velocity data
     Use all sets of separations, assume periodic data, accepts numpy or cupy arrays
@@ -70,55 +69,27 @@ def sf_au(
     dx = x[:N] - x[0]
 
     diffs = (dx, dy, dz)
+    xp = cp.get_array_module(u)
 
-    if spectral:
-        if cp.get_array_module(u) == cp:  # type: ignore
-            from cupyx.scipy import fft  # noqa: PLC0415
-        else:
-            from scipy import fft  # noqa: PLC0415
-        dk = 2 * np.pi / (len(x) * dx[1])
-        dl = 2 * np.pi / (len(y) * dy[1])
-        dm = 2 * np.pi / (len(z) * dz[1])
-        k_range = fft.fftfreq(len(x)) * len(x) * dk
-        l_range = fft.fftfreq(len(y)) * len(y) * dl
-        m_range = fft.fftfreq(len(z)) * len(z) * dm
-        u_hat = fft.fftn(u)
-        v_hat = fft.fftn(v)
-        w_hat = fft.fftn(w)
-        k_mesh = np.meshgrid(l_range, m_range, k_range)
-        dudx = np.real(fft.ifftn(1j * k_mesh[2] * u_hat))
-        dudy = np.real(fft.ifftn(1j * k_mesh[0] * u_hat))
-        dudz = np.real(fft.ifftn(1j * k_mesh[1] * u_hat))
-        dvdx = np.real(fft.ifftn(1j * k_mesh[2] * v_hat))
-        dvdy = np.real(fft.ifftn(1j * k_mesh[0] * v_hat))
-        dvdz = np.real(fft.ifftn(1j * k_mesh[1] * v_hat))
-        dwdx = np.real(fft.ifftn(1j * k_mesh[2] * w_hat))
-        dwdy = np.real(fft.ifftn(1j * k_mesh[0] * w_hat))
-        dwdz = np.real(fft.ifftn(1j * k_mesh[1] * w_hat))
-    else:
-        dudz, dudy, dudx = np.gradient(u, z, y, x, axis=(0, 1, 2))
-        dvdz, dvdy, dvdx = np.gradient(v, z, y, x, axis=(0, 1, 2))
-        dwdz, dwdy, dwdx = np.gradient(w, z, y, x, axis=(0, 1, 2))
+    dudz, dudy, dudx = xp.gradient(u, z, y, x, axis=(0, 1, 2))
+    dvdz, dvdy, dvdx = xp.gradient(v, z, y, x, axis=(0, 1, 2))
+    dwdz, dwdy, dwdx = xp.gradient(w, z, y, x, axis=(0, 1, 2))
 
     uadv = u * dudx + v * dudy + w * dudz
     vadv = u * dvdx + v * dvdy + w * dvdz
     wadv = u * dwdx + v * dwdy + w * dwdz
 
-    tmp1 = np.zeros_like(u)
-    tmp2 = np.zeros_like(u)
-    tmp3 = np.zeros_like(u)
-
     for i in range(L):
         for j in range(M):
             for k in range(N):
                 if not (i == 0 and j == 0 and k == 0):
-                    du = roll(u, i, j, k, tmp1, tmp2, tmp3) - u
-                    dv = roll(v, i, j, k, tmp1, tmp2, tmp3) - v
-                    dw = roll(w, i, j, k, tmp1, tmp2, tmp3) - w
-                    dau = roll(uadv, i, j, k, tmp1, tmp2, tmp3) - uadv
-                    dav = roll(vadv, i, j, k, tmp1, tmp2, tmp3) - vadv
-                    daw = roll(wadv, i, j, k, tmp1, tmp2, tmp3) - wadv
-                    sf[i, j, k] = np.mean(sf_au_kernel(du, dv, dw, dau, dav, daw))
+                    du = np.roll(u, shift=(-i, -j, -k), axis=(0, 1, 2)) - u
+                    dv = np.roll(v, shift=(-i, -j, -k), axis=(0, 1, 2)) - v
+                    dw = np.roll(w, shift=(-i, -j, -k), axis=(0, 1, 2)) - w
+                    dau = np.roll(uadv, shift=(-i, -j, -k), axis=(0, 1, 2)) - uadv
+                    dav = np.roll(vadv, shift=(-i, -j, -k), axis=(0, 1, 2)) - vadv
+                    daw = np.roll(wadv, shift=(-i, -j, -k), axis=(0, 1, 2)) - wadv
+                    sf[i, j, k] = xp.mean(sf_au_kernel(du, dv, dw, dau, dav, daw))
 
     return (diffs, sf)
 
@@ -131,7 +102,6 @@ def sf_au_dir(
     y: ndarray,
     z: ndarray,
     axis: Axis,
-    spectral: bool = False,
 ) -> tuple[ndarray, ndarray]:
     """Calculate the advective structure function on 3d velocity data
     Use separations in a specified direction, assume periodic data, accepts numpy or cupy arrays
@@ -178,34 +148,9 @@ def sf_au_dir(
 
     diffs = (dx, dy, dz)[axis.value]
 
-    if spectral:
-        if cp.get_array_module(u) == cp:  # type: ignore
-            from cupyx.scipy import fft  # noqa: PLC0415
-        else:
-            from scipy import fft  # noqa: PLC0415
-        dk = 2 * np.pi / (len(x) * dx[1])
-        dl = 2 * np.pi / (len(y) * dy[1])
-        dm = 2 * np.pi / (len(z) * dz[1])
-        k_range = fft.fftfreq(len(x)) * len(x) * dk
-        l_range = fft.fftfreq(len(y)) * len(y) * dl
-        m_range = fft.fftfreq(len(z)) * len(z) * dm
-        u_hat = fft.fftn(u)
-        v_hat = fft.fftn(v)
-        w_hat = fft.fftn(w)
-        k_mesh = np.meshgrid(l_range, m_range, k_range)
-        dudx = np.real(fft.ifftn(1j * k_mesh[2] * u_hat))
-        dudy = np.real(fft.ifftn(1j * k_mesh[0] * u_hat))
-        dudz = np.real(fft.ifftn(1j * k_mesh[1] * u_hat))
-        dvdx = np.real(fft.ifftn(1j * k_mesh[2] * v_hat))
-        dvdy = np.real(fft.ifftn(1j * k_mesh[0] * v_hat))
-        dvdz = np.real(fft.ifftn(1j * k_mesh[1] * v_hat))
-        dwdx = np.real(fft.ifftn(1j * k_mesh[2] * w_hat))
-        dwdy = np.real(fft.ifftn(1j * k_mesh[0] * w_hat))
-        dwdz = np.real(fft.ifftn(1j * k_mesh[1] * w_hat))
-    else:
-        dudz, dudy, dudx = np.gradient(u, z, y, x, axis=(0, 1, 2))
-        dvdz, dvdy, dvdx = np.gradient(v, z, y, x, axis=(0, 1, 2))
-        dwdz, dwdy, dwdx = np.gradient(w, z, y, x, axis=(0, 1, 2))
+    dudz, dudy, dudx = np.gradient(u, z, y, x, axis=(0, 1, 2))
+    dvdz, dvdy, dvdx = np.gradient(v, z, y, x, axis=(0, 1, 2))
+    dwdz, dwdy, dwdx = np.gradient(w, z, y, x, axis=(0, 1, 2))
 
     uadv = u * dudx + v * dudy + w * dudz
     vadv = u * dvdx + v * dvdy + w * dvdz
