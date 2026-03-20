@@ -2,7 +2,7 @@ import cupy as cp
 import numpy as np
 from numba import njit, prange
 
-from .roll import roll, roll_numba, roll_par
+from .roll import roll_numba, roll_par
 from .utils import Axis, ndarray
 
 # steps:
@@ -83,18 +83,14 @@ def sf_ln(
 
     diffs = (dz, dy, dx)
 
-    tmp1 = np.zeros_like(u)
-    tmp2 = np.zeros_like(u)
-    tmp3 = np.zeros_like(u)
-
     for i in range(L):
         for j in range(M):
             for k in range(N):
                 if not (i == 0 and j == 0 and k == 0):
                     r = np.sqrt(i**2 + j**2 + k**2)
-                    du = roll(u, i, j, k, tmp1, tmp2, tmp3) - u
-                    dv = roll(v, i, j, k, tmp1, tmp2, tmp3) - v
-                    dw = roll(w, i, j, k, tmp1, tmp2, tmp3) - w
+                    du = np.roll(u, (-i, -j, -k), axis=(0, 1, 2)) - u
+                    dv = np.roll(v, (-i, -j, -k), axis=(0, 1, 2)) - v
+                    dw = np.roll(w, (-i, -j, -k), axis=(0, 1, 2)) - w
                     sf[i, j, k] = np.mean(sf_kernel(du, dv, dw, i, j, k, r, order))
 
     return (diffs, sf)
