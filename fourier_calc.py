@@ -71,18 +71,11 @@ def pi_int_dir_finite(vel: ndarray, dx: float, data: SimData | SimDataLite) -> n
     adv_realspace += xp.gradient(vel, dx, axis=1) * data.v
     adv_realspace += xp.gradient(vel, dx, axis=0) * data.w
     adv_spec = genfft.fftshift(genfft.fftn(adv_realspace) * dx**3 / (2 * np.pi))
-    vel_conj = genfft.fftshift(xp.conj(cufft.fftn(vel)) * dx**3 / (2 * np.pi))
+    vel_conj = genfft.fftshift(xp.conj(genfft.fftn(vel)) * dx**3 / (2 * np.pi))
     return xp.real(vel_conj * adv_spec)
 
 
-def pi_int_dir_ocean_gpu(vel: cp.ndarray, dx: float, adv: cp.ndarray) -> cp.ndarray:
-    adv_realspace = adv
-    adv_spec = cufft.fftshift(cufft.fftn(adv_realspace) * dx**3 / (2 * np.pi))
-    vel_conj = cufft.fftshift(cp.conj(cufft.fftn(vel)) * dx**3 / (2 * np.pi))
-    return cp.real(vel_conj * adv_spec)
-
-
-def pi_int_dir_ocean_cpu(vel: np.ndarray, dx: float, adv: np.ndarray) -> np.ndarray:
+def pi_int_dir_ocean(vel: ndarray, dx: float, adv: ndarray) -> ndarray:
     """Generate a component of  array to integrate: Re[FT(u)* • FT((u•∇)u)],
     using provided gradients (e.g. calculated during the simulation)
 
@@ -100,10 +93,11 @@ def pi_int_dir_ocean_cpu(vel: np.ndarray, dx: float, adv: np.ndarray) -> np.ndar
     np.ndarray
         Directional component of Re[FT(u)* • FT((u•∇)u)]
     """
-    adv_realspace = adv
-    adv_spec = fft.fftshift(fft.fftn(adv_realspace) * dx**3 / (2 * np.pi))
-    vel_conj = fft.fftshift(np.conj(fft.fftn(vel)) * dx**3 / (2 * np.pi))
-    return np.real(vel_conj * adv_spec)
+    xp = cp.get_array_module(vel)
+    genfft = fft if xp.__name__ == "np" else cufft
+    adv_spec = genfft.fftshift(genfft.fftn(adv) * dx**3 / (2 * np.pi))
+    vel_conj = genfft.fftshift(xp.conj(genfft.fftn(vel)) * dx**3 / (2 * np.pi))
+    return xp.real(vel_conj * adv_spec)
 
 
 def fourier_prep(
@@ -125,7 +119,6 @@ def fourier_prep(
         Array of (k^2 + l^2 + m^2) for each integrand value
     """
     xp = cp.get_array_module(data.u)
-    use_gpu = xp.__name__ == "cupy"
 
     N = len(data.u)
     dx = float(data.x[1] - data.x[0])
@@ -147,16 +140,13 @@ def fourier_prep(
         pi_int += pi_int_dir_finite(data.w, dx, data)
     elif grad_method == GradMethod.oceananigans:
         if type(data) is SimData:
-            if use_gpu:
-                pi_int = pi_int_dir_ocean_gpu(data.u, dx, data.uadv)
-                pi_int += pi_int_dir_ocean_gpu(data.v, dx, data.vadv)
-                pi_int += pi_int_dir_ocean_gpu(data.w, dx, data.wadv)
-            else:
-                pi_int = pi_int_dir_ocean_cpu(data.u, dx, data.uadv)
-                pi_int += pi_int_dir_ocean_cpu(data.v, dx, data.vadv)
-                pi_int += pi_int_dir_ocean_cpu(data.w, dx, data.wadv)
+            pi_int = pi_int_dir_ocean(data.u, dx, data.uadv)
+            pi_int += pi_int_dir_ocean(data.v, dx, data.vadv)
+            pi_int += pi_int_dir_ocean(data.w, dx, data.wadv)
         else:
-            raise Exception("Include advection arrays to use Oceananigans gradients")
+            raise Exception(
+                "Include advection arrays to use Oceananigans or other precalculated gradients"
+            )
     else:
         raise Exception("Something is wrong with your gradient method choice")
 
