@@ -1,34 +1,35 @@
 from .advection import spectral_der
-from .utils import GradMethod, SimData, SimDataLite, ndarray, xp_fft
+from .utils import Axis, GradMethod, SimData, SimDataLite, ndarray, xp_fft
 
 
 def pi_int_dir_spectral(
-    vel: ndarray,
-    spacings: tuple[float, ...],
     data: SimData | SimDataLite,
-    ranges: tuple[ndarray, ndarray, ndarray],
+    axis: Axis,
+    spacings: tuple[float, ...],
+    k_ranges: tuple[ndarray, ndarray, ndarray],
 ) -> ndarray:
     """Generate a component of  array to integrate: Re[FT(u)* • FT((u•∇)u)],
     with optional cupy acceleration, using spectral estimate of gradients
 
     Parameters
     ----------
-    vel : ndarray
-        Realspace velocity component
-    spacings : tuple[float, float, float]
-        grid spacings
     data : SimData | SimDataLite
         Object containing realspace velocity components
-    ranges : tuple[ndarray, ndarray, ndarray]
-        Range of m-values (z-axis) associated with the grid size
+    axis : Axis
+        Axis along which to generate the component
+    spacings : tuple[float, float, float]
+        grid spacings
+    k_ranges : tuple[ndarray, ndarray, ndarray]
+        Range of m-values (z), l-values (y), k-values (x) associated with the grid size
 
     Returns
     -------
     ndarray
         Directional component of Re[FT(u)* • FT((u•∇)u)]
     """
+    vel = (data.w, data.v, data.u)[axis.value]
     xp, genfft = xp_fft(vel)
-    k_mesh = xp.meshgrid(*ranges, indexing="ij")
+    k_mesh = xp.meshgrid(*k_ranges, indexing="ij")
     vel_hat = genfft.fftshift(genfft.fftn(vel))
     adv_realspace = spectral_der(vel_hat, k_mesh[2]) * data.u  # u d(vel)/dx
     adv_realspace += spectral_der(vel_hat, k_mesh[1]) * data.v  # +v d(vel)/dy
@@ -40,25 +41,31 @@ def pi_int_dir_spectral(
 
 
 def pi_int_dir_finite(
-    vel: ndarray, spacings: tuple[float, ...], data: SimData | SimDataLite
+    data: SimData | SimDataLite,
+    axis: Axis,
+    spacings: tuple[float, ...],
+    k_ranges: tuple[ndarray, ndarray, ndarray],
 ) -> ndarray:
     """Generate a component of  array to integrate: Re[FT(u)* • FT((u•∇)u)],
     with optional cupy acceleration, using numpy finite element estimate of gradients
 
     Parameters
     ----------
-    vel : ndarray
-        Realspace velocity component
-    dx : float
-        grid spacing
     data : SimData | SimDataLite
         Object containing realspace velocity components
+    axis : Axis
+        Axis along which to generate the component
+    spacings : tuple[float, float, float]
+        grid spacings
+    k_ranges : tuple[ndarray, ndarray, ndarray]
+        Unused, for API compatability
 
     Returns
     -------
     ndarray
         Directional component of Re[FT(u)* • FT((u•∇)u)]
     """
+    vel = (data.w, data.v, data.u)[axis.value]
     xp, genfft = xp_fft(vel)
     adv_realspace = xp.gradient(vel, spacings[2], axis=2) * data.u
     adv_realspace += xp.gradient(vel, spacings[1], axis=1) * data.v
@@ -69,25 +76,34 @@ def pi_int_dir_finite(
     return xp.real(vel_conj * adv_spec)
 
 
-def pi_int_dir_ocean(vel: ndarray, spacings: tuple[float, ...], adv: ndarray) -> ndarray:
+def pi_int_dir_ocean(
+    data: SimData,
+    axis: Axis,
+    spacings: tuple[float, ...],
+    k_ranges: tuple[ndarray, ndarray, ndarray],
+) -> ndarray:
     """Generate a component of  array to integrate: Re[FT(u)* • FT((u•∇)u)],
     using provided gradients (e.g. calculated during the simulation), with optional
     cupy acceleration
 
     Parameters
     ----------
-    vel : ndarray
-        Realspace velocity component
-    dx : float
-        grid spacing
-    adv : ndarray
-        Realspace component of advection u•∇u
+    data : SimData | SimDataLite
+        Object containing realspace velocity components
+    axis : Axis
+        Axis along which to generate the component
+    spacings : tuple[float, float, float]
+        grid spacings
+    k_ranges : tuple[ndarray, ndarray, ndarray]
+        Unused, for API compatability
 
     Returns
     -------
     ndarray
         Directional component of Re[FT(u)* • FT((u•∇)u)]
     """
+    vel = (data.w, data.v, data.u)[axis.value]
+    adv = (data.wadv, data.vadv, data.uadv)[axis.value]
     xp, genfft = xp_fft(vel)
     dxdydz = spacings[0] * spacings[1] * spacings[2]
     adv_spec = genfft.fftshift(genfft.fftn(adv) * dxdydz / (2 * xp.pi))
@@ -131,18 +147,18 @@ def fourier_prep(
     # https://github.com/BrodiePearson/Paper_Bessel_SF_Method/blob/main/analysis/Calculate_Spectral_Fluxes_2D.m
 
     if grad_method == GradMethod.spectral:
-        pi_int = pi_int_dir_spectral(data.u, spacings, data, ranges)
-        pi_int += pi_int_dir_spectral(data.v, spacings, data, ranges)
-        pi_int += pi_int_dir_spectral(data.w, spacings, data, ranges)
+        pi_int = pi_int_dir_spectral(data, Axis.x, spacings, ranges)
+        pi_int += pi_int_dir_spectral(data, Axis.y, spacings, ranges)
+        pi_int += pi_int_dir_spectral(data, Axis.z, spacings, ranges)
     elif grad_method == GradMethod.numpy:
-        pi_int = pi_int_dir_finite(data.u, spacings, data)
-        pi_int += pi_int_dir_finite(data.v, spacings, data)
-        pi_int += pi_int_dir_finite(data.w, spacings, data)
+        pi_int = pi_int_dir_finite(data, Axis.x, spacings, ranges)
+        pi_int += pi_int_dir_finite(data, Axis.y, spacings, ranges)
+        pi_int += pi_int_dir_finite(data, Axis.z, spacings, ranges)
     elif grad_method == GradMethod.oceananigans:
         if type(data) is SimData:
-            pi_int = pi_int_dir_ocean(data.u, spacings, data.uadv)
-            pi_int += pi_int_dir_ocean(data.v, spacings, data.vadv)
-            pi_int += pi_int_dir_ocean(data.w, spacings, data.wadv)
+            pi_int = pi_int_dir_ocean(data, Axis.x, spacings, ranges)
+            pi_int += pi_int_dir_ocean(data, Axis.y, spacings, ranges)
+            pi_int += pi_int_dir_ocean(data, Axis.z, spacings, ranges)
         else:
             raise Exception(
                 "Include advection arrays to use Oceananigans or other precalculated gradients"
