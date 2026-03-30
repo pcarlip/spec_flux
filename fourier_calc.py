@@ -6,27 +6,27 @@ def pi_int_dir_spectral(
     vel: ndarray, dx: float, data: SimData | SimDataLite, k_range: ndarray
 ) -> ndarray:
     """Generate a component of  array to integrate: Re[FT(u)* • FT((u•∇)u)],
-    with cupy acceleration, using spectral estimate of gradients
+    with optional cupy acceleration, using spectral estimate of gradients
 
     Parameters
     ----------
-    vel : cp.ndarray
+    vel : ndarray
         Realspace velocity component
     dx : float
         grid spacing
     data : SimData | SimDataLite
         Object containing realspace velocity components
-    k_range : cp.ndarray
+    k_range : ndarray
         Range of k-values associated with the grid size
 
     Returns
     -------
-    cp.ndarray
+    ndarray
         Directional component of Re[FT(u)* • FT((u•∇)u)]
     """
-    xp, genfft = xp_fft(vel)
+    xp, fft = xp_fft(vel)
     k_mesh = xp.meshgrid(k_range, k_range, k_range)
-    vel_hat = genfft.fftshift(genfft.fftn(vel))
+    vel_hat = fft.fftshift(fft.fftn(vel))
     adv_realspace = (
         spectral_der(vel_hat, meshgrid_sel(k_mesh, Axis.x)) * data.u
     )  # u d(vel)/dx
@@ -36,18 +36,18 @@ def pi_int_dir_spectral(
     adv_realspace += (
         spectral_der(vel_hat, meshgrid_sel(k_mesh, Axis.z)) * data.w
     )  # +w d(vel)/dz
-    adv_spec = genfft.fftshift(genfft.fftn(adv_realspace) * dx**3 / (2 * xp.pi))
+    adv_spec = fft.fftshift(fft.fftn(adv_realspace) * dx**3 / (2 * xp.pi))
     vel_conj = xp.conj(vel_hat) * dx**3 / (2 * xp.pi)
     return xp.real(vel_conj * adv_spec)
 
 
 def pi_int_dir_finite(vel: ndarray, dx: float, data: SimData | SimDataLite) -> ndarray:
     """Generate a component of  array to integrate: Re[FT(u)* • FT((u•∇)u)],
-    with cupy acceleration, using numpy finite element estimate of gradients
+    with optional cupy acceleration, using numpy finite element estimate of gradients
 
     Parameters
     ----------
-    vel : cp.ndarray
+    vel : ndarray
         Realspace velocity component
     dx : float
         grid spacing
@@ -56,47 +56,49 @@ def pi_int_dir_finite(vel: ndarray, dx: float, data: SimData | SimDataLite) -> n
 
     Returns
     -------
-    cp.ndarray
+    ndarray
         Directional component of Re[FT(u)* • FT((u•∇)u)]
     """
-    xp, genfft = xp_fft(vel)
+    xp, fft = xp_fft(vel)
     adv_realspace = xp.gradient(vel, dx, axis=2) * data.u
     adv_realspace += xp.gradient(vel, dx, axis=1) * data.v
     adv_realspace += xp.gradient(vel, dx, axis=0) * data.w
-    adv_spec = genfft.fftshift(genfft.fftn(adv_realspace) * dx**3 / (2 * xp.pi))
-    vel_conj = genfft.fftshift(xp.conj(genfft.fftn(vel)) * dx**3 / (2 * xp.pi))
+    adv_spec = fft.fftshift(fft.fftn(adv_realspace) * dx**3 / (2 * xp.pi))
+    vel_conj = fft.fftshift(xp.conj(fft.fftn(vel)) * dx**3 / (2 * xp.pi))
     return xp.real(vel_conj * adv_spec)
 
 
 def pi_int_dir_ocean(vel: ndarray, dx: float, adv: ndarray) -> ndarray:
     """Generate a component of  array to integrate: Re[FT(u)* • FT((u•∇)u)],
-    using provided gradients (e.g. calculated during the simulation)
+    using provided gradients (e.g. calculated during the simulation), with optional
+    cupy acceleration
 
     Parameters
     ----------
-    vel : np.ndarray
+    vel : ndarray
         Realspace velocity component
     dx : float
         grid spacing
-    adv : np.ndarray
+    adv : ndarray
         Realspace component of advection u•∇u
 
     Returns
     -------
-    np.ndarray
+    ndarray
         Directional component of Re[FT(u)* • FT((u•∇)u)]
     """
-    xp, genfft = xp_fft(vel)
-    adv_spec = genfft.fftshift(genfft.fftn(adv) * dx**3 / (2 * xp.pi))
-    vel_conj = genfft.fftshift(xp.conj(genfft.fftn(vel)) * dx**3 / (2 * xp.pi))
+    xp, fft = xp_fft(vel)
+    adv_spec = fft.fftshift(fft.fftn(adv) * dx**3 / (2 * xp.pi))
+    vel_conj = fft.fftshift(xp.conj(fft.fftn(vel)) * dx**3 / (2 * xp.pi))
     return xp.real(vel_conj * adv_spec)
 
 
 def fourier_prep(
     data: SimData | SimDataLite,
-    grad_method: GradMethod = GradMethod.oceananigans,
+    grad_method: GradMethod = GradMethod.numpy,
 ) -> tuple[ndarray, ndarray]:
-    """Calculate integrand for spectral flux via fourier methods
+    """Calculate integrand for spectral flux via fourier methods, with optional cupy
+    acceleration
 
     Parameters
     ----------
@@ -105,18 +107,18 @@ def fourier_prep(
 
     Returns
     -------
-    np.ndarray
+    ndarray
         Array of integrand values, to be appropriately summed to get the spectral flux
-    np.ndarray
+    ndarray
         Array of (k^2 + l^2 + m^2) for each integrand value
     """
-    xp, genfft = xp_fft(data.u)
+    xp, fft = xp_fft(data.u)
 
     N = len(data.u)
     dx = float(data.x[1] - data.x[0])
     L = N * dx
     dk = 2 * xp.pi / L
-    k_range = genfft.fftshift(genfft.fftfreq(N) * N * dk)
+    k_range = fft.fftshift(fft.fftfreq(N) * N * dk)
 
     # dx^3 converts DFT to analog to FT, fftshift moves k = 0 to the middle
     # not sure about the factors of 2π, those come from
