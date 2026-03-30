@@ -3,7 +3,7 @@ import cupyx.scipy.fft as cufft
 import numpy as np
 from scipy import fft
 
-from .advection import spectral_der_cpu, spectral_der_gpu
+from .advection import spectral_der
 from .utils import Axis, GradMethod, SimData, SimDataLite, meshgrid_sel
 
 
@@ -32,13 +32,13 @@ def pi_int_dir_spectral_gpu(
     k_mesh = cp.meshgrid(k_range, k_range, k_range)
     vel_hat = cufft.fftshift(cufft.fftn(vel))
     adv_realspace = (
-        spectral_der_gpu(vel_hat, meshgrid_sel(k_mesh, Axis.x)) * data.u
+        spectral_der(vel_hat, meshgrid_sel(k_mesh, Axis.x)) * data.u
     )  # u d(vel)/dx
     adv_realspace += (
-        spectral_der_gpu(vel_hat, meshgrid_sel(k_mesh, Axis.y)) * data.v
+        spectral_der(vel_hat, meshgrid_sel(k_mesh, Axis.y)) * data.v
     )  # +v d(vel)/dy
     adv_realspace += (
-        spectral_der_gpu(vel_hat, meshgrid_sel(k_mesh, Axis.z)) * data.w
+        spectral_der(vel_hat, meshgrid_sel(k_mesh, Axis.z)) * data.w
     )  # +w d(vel)/dz
     adv_spec = cufft.fftshift(cufft.fftn(adv_realspace) * dx**3 / (2 * np.pi))
     vel_conj = cp.conj(vel_hat) * dx**3 / (2 * np.pi)
@@ -71,13 +71,13 @@ def pi_int_dir_spectral_cpu(
     k_mesh = np.meshgrid(k_range, k_range, k_range)
     vel_hat = fft.fftshift(fft.fftn(vel))
     adv_realspace = (
-        spectral_der_cpu(vel_hat, meshgrid_sel(k_mesh, Axis.x)) * data.u
+        spectral_der(vel_hat, meshgrid_sel(k_mesh, Axis.x)) * data.u
     )  # u d(vel)/dx
     adv_realspace += (
-        spectral_der_cpu(vel_hat, meshgrid_sel(k_mesh, Axis.y)) * data.v
+        spectral_der(vel_hat, meshgrid_sel(k_mesh, Axis.y)) * data.v
     )  # +v d(vel)/dy
     adv_realspace += (
-        spectral_der_cpu(vel_hat, meshgrid_sel(k_mesh, Axis.z)) * data.w
+        spectral_der(vel_hat, meshgrid_sel(k_mesh, Axis.z)) * data.w
     )  # +w d(vel)/dz
     adv_spec = fft.fftshift(fft.fftn(adv_realspace) * dx**3 / (2 * np.pi))
     vel_conj = np.conj(vel_hat) * dx**3 / (2 * np.pi)
