@@ -102,7 +102,8 @@ def sf_au_dir(
     axis: Axis,
 ) -> tuple[ndarray, ndarray]:
     """Calculate the advective structure function on 3d velocity data
-    Use separations in a specified direction, assume periodic data, accepts numpy or cupy arrays
+    Use separations in a specified direction, assume periodic data,
+    accepts numpy or cupy arrays
     note: x is the third index in the velocity and output arrays, z is the first
 
     Parameters
