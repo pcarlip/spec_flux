@@ -3,7 +3,7 @@ import numpy as np
 from cupyx.scipy import fft as cufft
 from scipy import fft
 
-from .utils import ndarray
+from .utils import ndarray, xp_fft
 
 
 def spectral_der(vel_hat: ndarray, k_grid: ndarray) -> ndarray:
@@ -21,6 +21,5 @@ def spectral_der(vel_hat: ndarray, k_grid: ndarray) -> ndarray:
     np.ndarray | cp.ndarray
         Realspace derivative of velocity with respect to the direction from the k-grid
     """
-    xp = cp.get_array_module(vel_hat)
-    genfft = fft if xp.__name__ == "np" else cufft
+    xp, genfft = xp_fft(vel_hat)
     return xp.real(genfft.ifftn(genfft.ifftshift(1j * k_grid * vel_hat)))
