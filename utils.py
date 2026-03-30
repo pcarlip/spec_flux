@@ -83,5 +83,5 @@ def xp_fft(array: ndarray) -> tuple[ModuleType, ModuleType]:
         scipy.fft or cupyx.scipy.fft
     """
     xp = cp.get_array_module(array)
-    genfft = fft if xp.__name__ == "np" else cufft
+    genfft = cufft if xp.__name__ == "cp" else fft
     return (xp, genfft)
