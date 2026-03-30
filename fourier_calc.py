@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 from .advection import spectral_der
 from .utils import Axis, GradMethod, SimData, SimDataLite, ndarray, xp_fft
 
@@ -18,7 +20,7 @@ def pi_int_dir_spectral(
     axis : Axis
         Axis along which to generate the component
     spacings : tuple[float, float, float]
-        grid spacings
+        Grid spacings
     k_ranges : tuple[ndarray, ndarray, ndarray]
         Range of m-values (z), l-values (y), k-values (x) associated with the grid size
 
@@ -56,7 +58,7 @@ def pi_int_dir_finite(
     axis : Axis
         Axis along which to generate the component
     spacings : tuple[float, float, float]
-        grid spacings
+        Grid spacings
     k_ranges : tuple[ndarray, ndarray, ndarray]
         Unused, for API compatability
 
@@ -89,11 +91,11 @@ def pi_int_dir_ocean(
     Parameters
     ----------
     data : SimData | SimDataLite
-        Object containing realspace velocity components
+        Object containing realspace velocity and advection components
     axis : Axis
         Axis along which to generate the component
     spacings : tuple[float, float, float]
-        grid spacings
+        Grid spacings
     k_ranges : tuple[ndarray, ndarray, ndarray]
         Unused, for API compatability
 
@@ -109,6 +111,37 @@ def pi_int_dir_ocean(
     adv_spec = genfft.fftshift(genfft.fftn(adv) * dxdydz / (2 * xp.pi))
     vel_conj = genfft.fftshift(xp.conj(genfft.fftn(vel)) * dxdydz / (2 * xp.pi))
     return xp.real(vel_conj * adv_spec)
+
+
+def pi_int_func(
+    data: SimData | SimDataLite,
+    spacings: tuple[float, ...],
+    ranges: tuple[ndarray, ndarray, ndarray],
+    directional: Callable,
+) -> ndarray:
+    """Generate array of integrand values for fourier-derived spectral flux
+
+    Parameters
+    ----------
+    data : SimData | SimDataLite
+        Dataclass with velocity and (optionally) advection data
+    spacings : tuple[float, ...]
+        Grid spacings
+    ranges : tuple[ndarray, ndarray, ndarray]
+        Range of m-values (z), l-values (y), k-values (x) associated with the grid size
+    directional : Callable
+        Function to calculate directional component of integrand
+        Must have signature (SimData | SimDataLite, Axis, spacings, ranges)
+
+    Returns
+    -------
+    ndarray
+        Array of integrand values
+    """
+    pi_int = directional(data, Axis.x, spacings, ranges)
+    pi_int += directional(data, Axis.y, spacings, ranges)
+    pi_int += directional(data, Axis.z, spacings, ranges)
+    return pi_int
 
 
 def fourier_prep(
@@ -147,18 +180,12 @@ def fourier_prep(
     # https://github.com/BrodiePearson/Paper_Bessel_SF_Method/blob/main/analysis/Calculate_Spectral_Fluxes_2D.m
 
     if grad_method == GradMethod.spectral:
-        pi_int = pi_int_dir_spectral(data, Axis.x, spacings, ranges)
-        pi_int += pi_int_dir_spectral(data, Axis.y, spacings, ranges)
-        pi_int += pi_int_dir_spectral(data, Axis.z, spacings, ranges)
+        pi_int = pi_int_func(data, spacings, ranges, pi_int_dir_spectral)
     elif grad_method == GradMethod.numpy:
-        pi_int = pi_int_dir_finite(data, Axis.x, spacings, ranges)
-        pi_int += pi_int_dir_finite(data, Axis.y, spacings, ranges)
-        pi_int += pi_int_dir_finite(data, Axis.z, spacings, ranges)
+        pi_int = pi_int_func(data, spacings, ranges, pi_int_dir_finite)
     elif grad_method == GradMethod.oceananigans:
         if type(data) is SimData:
-            pi_int = pi_int_dir_ocean(data, Axis.x, spacings, ranges)
-            pi_int += pi_int_dir_ocean(data, Axis.y, spacings, ranges)
-            pi_int += pi_int_dir_ocean(data, Axis.z, spacings, ranges)
+            pi_int = pi_int_func(data, spacings, ranges, pi_int_dir_ocean)
         else:
             raise Exception(
                 "Include advection arrays to use Oceananigans or other precalculated gradients"
