@@ -4,12 +4,12 @@ import numpy as np
 from scipy import fft
 
 from .advection import spectral_der
-from .utils import Axis, GradMethod, SimData, SimDataLite, meshgrid_sel
+from .utils import Axis, GradMethod, SimData, SimDataLite, meshgrid_sel, ndarray
 
 
-def pi_int_dir_spectral_gpu(
-    vel: cp.ndarray, dx: float, data: SimData | SimDataLite, k_range: cp.ndarray
-) -> cp.ndarray:
+def pi_int_dir_spectral(
+    vel: ndarray, dx: float, data: SimData | SimDataLite, k_range: ndarray
+) -> ndarray:
     """Generate a component of  array to integrate: Re[FT(u)* • FT((u•∇)u)],
     with cupy acceleration, using spectral estimate of gradients
 
@@ -29,8 +29,10 @@ def pi_int_dir_spectral_gpu(
     cp.ndarray
         Directional component of Re[FT(u)* • FT((u•∇)u)]
     """
-    k_mesh = cp.meshgrid(k_range, k_range, k_range)
-    vel_hat = cufft.fftshift(cufft.fftn(vel))
+    xp = cp.get_array_module(vel)
+    genfft = fft if xp.__name__ == "np" else cufft
+    k_mesh = xp.meshgrid(k_range, k_range, k_range)
+    vel_hat = genfft.fftshift(genfft.fftn(vel))
     adv_realspace = (
         spectral_der(vel_hat, meshgrid_sel(k_mesh, Axis.x)) * data.u
     )  # u d(vel)/dx
@@ -40,48 +42,9 @@ def pi_int_dir_spectral_gpu(
     adv_realspace += (
         spectral_der(vel_hat, meshgrid_sel(k_mesh, Axis.z)) * data.w
     )  # +w d(vel)/dz
-    adv_spec = cufft.fftshift(cufft.fftn(adv_realspace) * dx**3 / (2 * np.pi))
-    vel_conj = cp.conj(vel_hat) * dx**3 / (2 * np.pi)
-    return cp.real(vel_conj * adv_spec)
-
-
-def pi_int_dir_spectral_cpu(
-    vel: np.ndarray, dx: float, data: SimData | SimDataLite, k_range: np.ndarray
-) -> np.ndarray:
-    """Generate a component of  array to integrate: Re[FT(u)* • FT((u•∇)u)],
-    using spectral estimate of gradients
-
-    Parameters
-    ----------
-    vel : np.ndarray
-        Realspace velocity component
-    dx : float
-        grid spacing
-    data : SimData | SimDataLite
-        Object containing realspace velocity components
-    k_range : np.ndarray
-        Range of k-values associated with the grid size
-
-    Returns
-    -------
-    np.ndarray
-        Directional component of Re[FT(u)* • FT((u•∇)u)]
-    """
-
-    k_mesh = np.meshgrid(k_range, k_range, k_range)
-    vel_hat = fft.fftshift(fft.fftn(vel))
-    adv_realspace = (
-        spectral_der(vel_hat, meshgrid_sel(k_mesh, Axis.x)) * data.u
-    )  # u d(vel)/dx
-    adv_realspace += (
-        spectral_der(vel_hat, meshgrid_sel(k_mesh, Axis.y)) * data.v
-    )  # +v d(vel)/dy
-    adv_realspace += (
-        spectral_der(vel_hat, meshgrid_sel(k_mesh, Axis.z)) * data.w
-    )  # +w d(vel)/dz
-    adv_spec = fft.fftshift(fft.fftn(adv_realspace) * dx**3 / (2 * np.pi))
-    vel_conj = np.conj(vel_hat) * dx**3 / (2 * np.pi)
-    return np.real(vel_conj * adv_spec)
+    adv_spec = genfft.fftshift(genfft.fftn(adv_realspace) * dx**3 / (2 * np.pi))
+    vel_conj = xp.conj(vel_hat) * dx**3 / (2 * np.pi)
+    return xp.real(vel_conj * adv_spec)
 
 
 def pi_int_dir_np_gpu(
@@ -203,14 +166,9 @@ def fourier_prep(
     # https://github.com/BrodiePearson/Paper_Bessel_SF_Method/blob/main/analysis/Calculate_Spectral_Fluxes_2D.m
 
     if grad_method == GradMethod.spectral:
-        if use_gpu:
-            pi_int = pi_int_dir_spectral_gpu(data.u, dx, data, k_range)
-            pi_int += pi_int_dir_spectral_gpu(data.v, dx, data, k_range)
-            pi_int += pi_int_dir_spectral_gpu(data.w, dx, data, k_range)
-        else:
-            pi_int = pi_int_dir_spectral_cpu(data.u, dx, data, k_range)
-            pi_int += pi_int_dir_spectral_cpu(data.v, dx, data, k_range)
-            pi_int += pi_int_dir_spectral_cpu(data.w, dx, data, k_range)
+        pi_int = pi_int_dir_spectral(data.u, dx, data, k_range)
+        pi_int += pi_int_dir_spectral(data.v, dx, data, k_range)
+        pi_int += pi_int_dir_spectral(data.w, dx, data, k_range)
     elif grad_method == GradMethod.numpy:
         if use_gpu:
             pi_int = pi_int_dir_np_gpu(data.u, dx, data)
