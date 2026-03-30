@@ -1,8 +1,11 @@
 from dataclasses import dataclass
 from enum import Enum, StrEnum
+from types import ModuleType
 
 import cupy as cp
+import cupyx.scipy.fft as cufft
 import numpy as np
+from scipy import fft
 
 type ndarray = np.ndarray | cp.ndarray  # noqa: PYI042
 
@@ -84,3 +87,23 @@ def meshgrid_sel(grid: tuple, axis: Axis) -> ndarray:
         return grid[0]
     else:
         return grid[1]
+
+
+def xp_fft(array: ndarray) -> tuple[ModuleType, ModuleType]:
+    """Choose the correct array and fft modules for a given array
+
+    Parameters
+    ----------
+    array : ndarray
+        Input array to type
+
+    Returns
+    -------
+    ModuleType
+        numpy or cupy
+    ModuleType
+        scipy.fft or cupyx.scipy.fft
+    """
+    xp = cp.get_array_module(array)
+    genfft = fft if xp.__name__ == "np" else cufft
+    return (xp, genfft)
