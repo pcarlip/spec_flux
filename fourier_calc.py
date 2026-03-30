@@ -47,9 +47,7 @@ def pi_int_dir_spectral(
     return xp.real(vel_conj * adv_spec)
 
 
-def pi_int_dir_np_gpu(
-    vel: cp.ndarray, dx: float, data: SimData | SimDataLite
-) -> cp.ndarray:
+def pi_int_dir_finite(vel: ndarray, dx: float, data: SimData | SimDataLite) -> ndarray:
     """Generate a component of  array to integrate: Re[FT(u)* • FT((u•∇)u)],
     with cupy acceleration, using numpy finite element estimate of gradients
 
@@ -67,40 +65,14 @@ def pi_int_dir_np_gpu(
     cp.ndarray
         Directional component of Re[FT(u)* • FT((u•∇)u)]
     """
-    adv_realspace = cp.gradient(vel, dx, axis=2) * data.u
-    adv_realspace += cp.gradient(vel, dx, axis=1) * data.v
-    adv_realspace += cp.gradient(vel, dx, axis=0) * data.w
-    adv_spec = cufft.fftshift(cufft.fftn(adv_realspace) * dx**3 / (2 * np.pi))
-    vel_conj = cufft.fftshift(cp.conj(cufft.fftn(vel)) * dx**3 / (2 * np.pi))
-    return cp.real(vel_conj * adv_spec)
-
-
-def pi_int_dir_np_cpu(
-    vel: np.ndarray, dx: float, data: SimData | SimDataLite
-) -> np.ndarray:
-    """Generate a component of  array to integrate: Re[FT(u)* • FT((u•∇)u)],
-    using numpy finite element estimate of gradients
-
-    Parameters
-    ----------
-    vel : np.ndarray
-        Realspace velocity component
-    dx : float
-        grid spacing
-    data : SimData | SimDataLite
-        Object containing realspace velocity components
-
-    Returns
-    -------
-    np.ndarray
-        Directional component of Re[FT(u)* • FT((u•∇)u)]
-    """
-    adv_realspace = np.gradient(vel, dx, axis=2) * data.u
-    adv_realspace += np.gradient(vel, dx, axis=1) * data.v
-    adv_realspace += np.gradient(vel, dx, axis=0) * data.w
-    adv_spec = fft.fftshift(fft.fftn(adv_realspace) * dx**3 / (2 * np.pi))
-    vel_conj = fft.fftshift(np.conj(fft.fftn(vel)) * dx**3 / (2 * np.pi))
-    return np.real(vel_conj * adv_spec)
+    xp = cp.get_array_module(vel)
+    genfft = fft if xp.__name__ == "np" else cufft
+    adv_realspace = xp.gradient(vel, dx, axis=2) * data.u
+    adv_realspace += xp.gradient(vel, dx, axis=1) * data.v
+    adv_realspace += xp.gradient(vel, dx, axis=0) * data.w
+    adv_spec = genfft.fftshift(genfft.fftn(adv_realspace) * dx**3 / (2 * np.pi))
+    vel_conj = genfft.fftshift(xp.conj(cufft.fftn(vel)) * dx**3 / (2 * np.pi))
+    return xp.real(vel_conj * adv_spec)
 
 
 def pi_int_dir_ocean_gpu(vel: cp.ndarray, dx: float, adv: cp.ndarray) -> cp.ndarray:
@@ -170,14 +142,9 @@ def fourier_prep(
         pi_int += pi_int_dir_spectral(data.v, dx, data, k_range)
         pi_int += pi_int_dir_spectral(data.w, dx, data, k_range)
     elif grad_method == GradMethod.numpy:
-        if use_gpu:
-            pi_int = pi_int_dir_np_gpu(data.u, dx, data)
-            pi_int += pi_int_dir_np_gpu(data.v, dx, data)
-            pi_int += pi_int_dir_np_gpu(data.w, dx, data)
-        else:
-            pi_int = pi_int_dir_np_cpu(data.u, dx, data)
-            pi_int += pi_int_dir_np_cpu(data.v, dx, data)
-            pi_int += pi_int_dir_np_cpu(data.w, dx, data)
+        pi_int = pi_int_dir_finite(data.u, dx, data)
+        pi_int += pi_int_dir_finite(data.v, dx, data)
+        pi_int += pi_int_dir_finite(data.w, dx, data)
     elif grad_method == GradMethod.oceananigans:
         if type(data) is SimData:
             if use_gpu:
