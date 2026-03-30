@@ -1,5 +1,3 @@
-from enum import Enum
-
 import cupy as cp
 import numpy as np
 from numba import njit, prange

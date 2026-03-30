@@ -1,6 +1,3 @@
-from dataclasses import dataclass
-from enum import Enum
-
 import cupy as cp
 import cupyx.scipy.fft as cufft
 import numpy as np
