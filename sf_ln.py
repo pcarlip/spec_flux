@@ -43,7 +43,7 @@ def sf_ln(
     z: ndarray,
     order: int = 3,
 ) -> tuple[tuple[ndarray, ndarray, ndarray], ndarray]:
-    """Calculate a longitudinal structure function of an arbitrary order on 3d velocity data
+    """Calculate a longitudinal structure function of an arbitrary order on 3d velocities
     Use all sets of separations, assume periodic data, accepts numpy or cupy arrays
 
     Parameters
@@ -106,7 +106,7 @@ def sf_ln_dir(
     axis: Axis,
     order: int = 3,
 ) -> tuple[ndarray, ndarray]:
-    """Calculate a longitudinal structure function of an arbitrary order on 3d velocity data
+    """Calculate a longitudinal structure function of an arbitrary order on 3d velocities
     Use separations along one axis, assume periodic data, accepts numpy or cupy arrays
     note: convention is that z is the first axis of the velocity arrays, x is the third
 
@@ -170,7 +170,7 @@ def sf_ln_numba(
     order: int = 3,
     parallel: bool = False,
 ) -> tuple[tuple[ndarray, ndarray, ndarray], ndarray]:
-    """Calculate a longitudinal structure function of an arbitrary order on 3d velocity data
+    """Calculate a longitudinal structure function of an arbitrary order on 3d velocities
     Use all sets of separations, assume periodic data, accelerated by numba
 
     Parameters
