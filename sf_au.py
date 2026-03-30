@@ -56,18 +56,19 @@ def sf_au(
     ndarray
         structure function value at each set of spacings
     """
+    xp = cp.get_array_module(u)
+
     L = len(z) // 2
     M = len(y) // 2
     N = len(x) // 2
 
-    sf = np.zeros((L, M, N), np.float64, like=u)
+    sf = np.zeros((L, M, N), like=u)
 
     dz = z[:L] - z[0]
     dy = y[:M] - y[0]
     dx = x[:N] - x[0]
 
     diffs = (dx, dy, dz)
-    xp = cp.get_array_module(u)
 
     dudz, dudy, dudx = xp.gradient(u, z, y, x, axis=(0, 1, 2))
     dvdz, dvdy, dvdx = xp.gradient(v, z, y, x, axis=(0, 1, 2))
@@ -81,12 +82,12 @@ def sf_au(
         for j in range(M):
             for k in range(N):
                 if not (i == 0 and j == 0 and k == 0):
-                    du = np.roll(u, shift=(-i, -j, -k), axis=(0, 1, 2)) - u
-                    dv = np.roll(v, shift=(-i, -j, -k), axis=(0, 1, 2)) - v
-                    dw = np.roll(w, shift=(-i, -j, -k), axis=(0, 1, 2)) - w
-                    dau = np.roll(uadv, shift=(-i, -j, -k), axis=(0, 1, 2)) - uadv
-                    dav = np.roll(vadv, shift=(-i, -j, -k), axis=(0, 1, 2)) - vadv
-                    daw = np.roll(wadv, shift=(-i, -j, -k), axis=(0, 1, 2)) - wadv
+                    du = xp.roll(u, shift=(-i, -j, -k), axis=(0, 1, 2)) - u
+                    dv = xp.roll(v, shift=(-i, -j, -k), axis=(0, 1, 2)) - v
+                    dw = xp.roll(w, shift=(-i, -j, -k), axis=(0, 1, 2)) - w
+                    dau = xp.roll(uadv, shift=(-i, -j, -k), axis=(0, 1, 2)) - uadv
+                    dav = xp.roll(vadv, shift=(-i, -j, -k), axis=(0, 1, 2)) - vadv
+                    daw = xp.roll(wadv, shift=(-i, -j, -k), axis=(0, 1, 2)) - wadv
                     sf[i, j, k] = xp.mean(sf_au_kernel(du, dv, dw, dau, dav, daw))
 
     return (diffs, sf)
@@ -133,13 +134,15 @@ def sf_au_dir(
     ndarray
         structure function value at each spacing
     """
+    xp = cp.get_array_module(u)
+
     L = len(z) // 2
     M = len(y) // 2
     N = len(x) // 2
 
     count = (L, M, N)[axis.value]
 
-    sf = np.zeros(count, np.float64, like=u)
+    sf = xp.zeros_like(count)
 
     dz = z[:L] - z[0]
     dy = y[:M] - y[0]
@@ -147,22 +150,22 @@ def sf_au_dir(
 
     diffs = (dx, dy, dz)[axis.value]
 
-    dudz, dudy, dudx = np.gradient(u, z, y, x, axis=(0, 1, 2))
-    dvdz, dvdy, dvdx = np.gradient(v, z, y, x, axis=(0, 1, 2))
-    dwdz, dwdy, dwdx = np.gradient(w, z, y, x, axis=(0, 1, 2))
+    dudz, dudy, dudx = xp.gradient(u, z, y, x, axis=(0, 1, 2))
+    dvdz, dvdy, dvdx = xp.gradient(v, z, y, x, axis=(0, 1, 2))
+    dwdz, dwdy, dwdx = xp.gradient(w, z, y, x, axis=(0, 1, 2))
 
     uadv = u * dudx + v * dudy + w * dudz
     vadv = u * dvdx + v * dvdy + w * dvdz
     wadv = u * dwdx + v * dwdy + w * dwdz
 
     for i in range(count):
-        du = np.roll(u, -i, axis=axis.value) - u
-        dv = np.roll(v, -i, axis=axis.value) - v
-        dw = np.roll(w, -i, axis=axis.value) - w
-        dau = np.roll(uadv, -i, axis=axis.value) - uadv
-        dav = np.roll(vadv, -i, axis=axis.value) - vadv
-        daw = np.roll(wadv, -i, axis=axis.value) - wadv
-        sf[i] = np.mean(sf_au_kernel(du, dv, dw, dau, dav, daw))
+        du = xp.roll(u, -i, axis=axis.value) - u
+        dv = xp.roll(v, -i, axis=axis.value) - v
+        dw = xp.roll(w, -i, axis=axis.value) - w
+        dau = xp.roll(uadv, -i, axis=axis.value) - uadv
+        dav = xp.roll(vadv, -i, axis=axis.value) - vadv
+        daw = xp.roll(wadv, -i, axis=axis.value) - wadv
+        sf[i] = xp.mean(sf_au_kernel(du, dv, dw, dau, dav, daw))
 
     return (diffs, sf)
 

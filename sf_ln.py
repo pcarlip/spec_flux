@@ -71,6 +71,8 @@ def sf_ln(
     ndarray
         structure function value at each set of spacings
     """
+    xp = cp.get_array_module(u)
+
     L = len(z) // 2
     M = len(y) // 2
     N = len(x) // 2
@@ -87,11 +89,11 @@ def sf_ln(
         for j in range(M):
             for k in range(N):
                 if not (i == 0 and j == 0 and k == 0):
-                    r = np.sqrt(i**2 + j**2 + k**2)
-                    du = np.roll(u, (-i, -j, -k), axis=(0, 1, 2)) - u
-                    dv = np.roll(v, (-i, -j, -k), axis=(0, 1, 2)) - v
-                    dw = np.roll(w, (-i, -j, -k), axis=(0, 1, 2)) - w
-                    sf[i, j, k] = np.mean(sf_kernel(du, dv, dw, i, j, k, r, order))
+                    r = xp.sqrt(i**2 + j**2 + k**2)
+                    du = xp.roll(u, (-i, -j, -k), axis=(0, 1, 2)) - u
+                    dv = xp.roll(v, (-i, -j, -k), axis=(0, 1, 2)) - v
+                    dw = xp.roll(w, (-i, -j, -k), axis=(0, 1, 2)) - w
+                    sf[i, j, k] = xp.mean(sf_kernel(du, dv, dw, i, j, k, r, order))
 
     return (diffs, sf)
 
