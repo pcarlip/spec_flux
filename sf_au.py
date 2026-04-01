@@ -2,8 +2,9 @@ import cupy as cp
 import numpy as np
 from numba import njit, prange
 
+from .advection import advection
 from .roll import roll_numba, roll_par
-from .utils import Axis, ndarray
+from .utils import Axis, GradMethod, SimDataLite, ndarray, spacings_krange, xp_fft
 
 
 @cp.fuse
@@ -26,6 +27,7 @@ def sf_au(
     x: ndarray,
     y: ndarray,
     z: ndarray,
+    spectral: bool = False,
 ) -> tuple[tuple[ndarray, ndarray, ndarray], ndarray]:
     """Calculate the advective structure function on 3d velocity data
     Use all sets of separations, assume periodic data, accepts numpy or cupy arrays
@@ -45,9 +47,8 @@ def sf_au(
         1d array of y positions
     z : ndarray
         1d array of z positions
-    spectral : bool
-        Whether to use spectral calculation of gradients
-        (default false, true is currently broken)
+    spectral : bool, optional
+        Whether to use spectral calculation of gradients, by default False
 
     Returns
     -------
@@ -56,7 +57,7 @@ def sf_au(
     ndarray
         structure function value at each set of spacings
     """
-    xp = cp.get_array_module(u)
+    xp, genfft = xp_fft(u)
 
     L = len(z) // 2
     M = len(y) // 2
@@ -70,13 +71,13 @@ def sf_au(
 
     diffs = (dx, dy, dz)
 
-    dudz, dudy, dudx = xp.gradient(u, z, y, x, axis=(0, 1, 2))
-    dvdz, dvdy, dvdx = xp.gradient(v, z, y, x, axis=(0, 1, 2))
-    dwdz, dwdy, dwdx = xp.gradient(w, z, y, x, axis=(0, 1, 2))
+    grad_method = GradMethod.spectral if spectral else GradMethod.numpy
+    data = SimDataLite(u, v, w, x, y, z)
+    spacings, ranges = spacings_krange(data)
 
-    uadv = u * dudx + v * dudy + w * dudz
-    vadv = u * dvdx + v * dvdy + w * dvdz
-    wadv = u * dwdx + v * dwdy + w * dwdz
+    uadv = advection(data, Axis.x, spacings, ranges, grad_method)
+    vadv = advection(data, Axis.y, spacings, ranges, grad_method)
+    wadv = advection(data, Axis.z, spacings, ranges, grad_method)
 
     for i in range(L):
         for j in range(M):
@@ -101,6 +102,7 @@ def sf_au_dir(
     y: ndarray,
     z: ndarray,
     axis: Axis,
+    spectral: bool = False,
 ) -> tuple[ndarray, ndarray]:
     """Calculate the advective structure function on 3d velocity data
     Use separations in a specified direction, assume periodic data,
@@ -123,9 +125,8 @@ def sf_au_dir(
         1d array of z positions
     axis : Axis
         Axis along which separations are used
-    spectral : bool
-        Whether to use spectral calculation of gradients
-        (default false, true is currently broken)
+    spectral : bool, optional
+        Whether to use spectral calculation of gradients, by default False
 
     Returns
     -------
@@ -134,7 +135,7 @@ def sf_au_dir(
     ndarray
         structure function value at each spacing
     """
-    xp = cp.get_array_module(u)
+    xp, _ = xp_fft(u)
 
     L = len(z) // 2
     M = len(y) // 2
@@ -142,7 +143,7 @@ def sf_au_dir(
 
     count = (L, M, N)[axis.value]
 
-    sf = xp.zeros_like(count)
+    sf = np.zeros(count, like=u)
 
     dz = z[:L] - z[0]
     dy = y[:M] - y[0]
@@ -150,13 +151,14 @@ def sf_au_dir(
 
     diffs = (dx, dy, dz)[axis.value]
 
-    dudz, dudy, dudx = xp.gradient(u, z, y, x, axis=(0, 1, 2))
-    dvdz, dvdy, dvdx = xp.gradient(v, z, y, x, axis=(0, 1, 2))
-    dwdz, dwdy, dwdx = xp.gradient(w, z, y, x, axis=(0, 1, 2))
+    grad_method = GradMethod.spectral if spectral else GradMethod.numpy
+    data = SimDataLite(u, v, w, x, y, z)
 
-    uadv = u * dudx + v * dudy + w * dudz
-    vadv = u * dvdx + v * dvdy + w * dvdz
-    wadv = u * dwdx + v * dwdy + w * dwdz
+    spacings, ranges = spacings_krange(data)
+
+    uadv = advection(data, Axis.x, spacings, ranges, grad_method)
+    vadv = advection(data, Axis.y, spacings, ranges, grad_method)
+    wadv = advection(data, Axis.z, spacings, ranges, grad_method)
 
     for i in range(count):
         du = xp.roll(u, -i, axis=axis.value) - u
