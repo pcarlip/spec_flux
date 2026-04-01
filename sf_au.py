@@ -57,7 +57,7 @@ def sf_au(
     ndarray
         structure function value at each set of spacings
     """
-    xp, genfft = xp_fft(u)
+    xp, _ = xp_fft(u)
 
     L = len(z) // 2
     M = len(y) // 2
