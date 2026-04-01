@@ -275,12 +275,12 @@ def sf_au_numba_calc(
 
 @njit(parallel=True)
 def sf_au_numba_calc_par(
-    x: np.ndarray,
-    y: np.ndarray,
-    z: np.ndarray,
     u: np.ndarray,
     v: np.ndarray,
     w: np.ndarray,
+    x: np.ndarray,
+    y: np.ndarray,
+    z: np.ndarray,
     grads: tuple,
 ) -> np.ndarray:
     """Internal function for numba-accelerated, parallel structure function calculation"""
