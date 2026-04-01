@@ -58,7 +58,8 @@ def advection(
         Attempt to use GradMethod.oceananigans (precalculated advection) when
         input data doesn't include that information
     """
-    vel = (data.w, data.v, data.u)[axis.value]
+    vel_lst = (data.w, data.v, data.u)
+    vel = vel_lst[axis.value]
     xp, genfft = xp_fft(vel)
     if method == GradMethod.oceananigans:
         if type(data) is SimData:
@@ -68,13 +69,12 @@ def advection(
                 "Include advection arrays to use Oceananigans or other precalculated gradients"
             )
     elif method == GradMethod.numpy:
-        adv = xp.gradient(vel, spacings[2], axis=2, edge_order=edge_order) * data.u
-        adv += xp.gradient(vel, spacings[1], axis=1, edge_order=edge_order) * data.v
-        adv += xp.gradient(vel, spacings[0], axis=0, edge_order=edge_order) * data.w
+        adv = sum(
+            xp.gradient(vel, spacings[i], axis=i, edge_order=edge_order) * vel_lst[i]
+            for i in range(3)
+        )
     else:  # GradMethod == GradMethod.spectral
         k_mesh = xp.meshgrid(*k_ranges, indexing="ij")
         vel_hat = genfft.fftshift(genfft.fftn(vel))
-        adv = spectral_der(vel_hat, k_mesh[2]) * data.u  # u d(vel)/dx
-        adv += spectral_der(vel_hat, k_mesh[1]) * data.v  # +v d(vel)/dy
-        adv += spectral_der(vel_hat, k_mesh[0]) * data.w  # +w d(vel)/dz
+        adv = sum(spectral_der(vel_hat, k_mesh[i]) * vel_lst[i] for i in range(3))
     return adv
