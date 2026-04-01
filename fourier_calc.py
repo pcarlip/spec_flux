@@ -1,7 +1,15 @@
 from collections.abc import Callable
 
 from .advection import advection, spectral_der
-from .utils import Axis, GradMethod, SimData, SimDataLite, ndarray, xp_fft
+from .utils import (
+    Axis,
+    GradMethod,
+    SimData,
+    SimDataLite,
+    ndarray,
+    spacings_krange,
+    xp_fft,
+)
 
 
 def pi_int_dir(
@@ -59,18 +67,9 @@ def fourier_prep(
     ndarray
         Array of (k^2 + l^2 + m^2) for each integrand value
     """
-    xp, genfft = xp_fft(data.u)
+    xp, _ = xp_fft(data.u)
 
-    spacings = tuple(float(i[1] - i[0]) for i in [data.x, data.y, data.z])
-    ranges = []
-    for i in range(3):
-        N = data.u.shape[i]
-        L = N * spacings[i]
-        dk = 2 * xp.pi / L
-        k_range = genfft.fftshift(genfft.fftfreq(N) * N * dk)
-        ranges.append(k_range)
-
-    ranges = tuple(ranges)
+    spacings, ranges = spacings_krange(data)
     # dx^3 converts DFT to analog to FT, fftshift moves k = 0 to the middle
     # not sure about the factors of 2π, those come from
     # https://github.com/BrodiePearson/Paper_Bessel_SF_Method/blob/main/analysis/Calculate_Spectral_Fluxes_2D.m

@@ -85,3 +85,19 @@ def xp_fft(array: ndarray) -> tuple[ModuleType, ModuleType]:
     xp = cp.get_array_module(array)
     genfft = cufft if xp.__name__ == "cupy" else fft
     return (xp, genfft)
+
+
+def spacings_krange(
+    data: SimData | SimDataLite,
+) -> tuple[tuple[float, float, float], tuple[ndarray, ndarray, ndarray]]:
+    xp, genfft = xp_fft(data.u)
+    spacings = (data.x[1] - data.x[0], data.y[1] - data.y[0], data.z[1] - data.z[0])
+    ranges = []
+    for i in range(3):
+        Ni = data.u.shape[i]
+        Li = Ni * spacings[i]
+        dk = 2 * xp.pi / Li
+        k_range = genfft.fftshift(genfft.fftfreq(Ni) * Ni * dk)
+        ranges.append(k_range)
+    ranges = tuple(ranges)
+    return (spacings, ranges)
