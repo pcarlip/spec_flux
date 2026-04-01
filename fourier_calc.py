@@ -116,7 +116,7 @@ def pi_int_dir_ocean(
 def pi_int_func(
     data: SimData | SimDataLite,
     spacings: tuple[float, ...],
-    ranges: tuple[ndarray, ndarray, ndarray],
+    k_ranges: tuple[ndarray, ndarray, ndarray],
     directional: Callable,
 ) -> ndarray:
     """Generate array of integrand values for fourier-derived spectral flux
@@ -138,9 +138,9 @@ def pi_int_func(
     ndarray
         Array of integrand values
     """
-    pi_int = directional(data, Axis.x, spacings, ranges)
-    pi_int += directional(data, Axis.y, spacings, ranges)
-    pi_int += directional(data, Axis.z, spacings, ranges)
+    pi_int = directional(data, Axis.x, spacings, k_ranges)
+    pi_int += directional(data, Axis.y, spacings, k_ranges)
+    pi_int += directional(data, Axis.z, spacings, k_ranges)
     return pi_int
 
 
