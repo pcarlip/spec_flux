@@ -1,6 +1,4 @@
-from collections.abc import Callable
-
-from .advection import advection, spectral_der
+from .advection import advection
 from .utils import (
     Axis,
     GradMethod,
