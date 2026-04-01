@@ -23,8 +23,8 @@ def spectral_der(vel_hat: ndarray, k_grid: ndarray) -> ndarray:
 
 
 def advection(
-    axis: Axis,
     data: SimData | SimDataLite,
+    axis: Axis,
     spacings: tuple[float, ...],
     k_ranges: tuple[ndarray, ndarray, ndarray],
     method: GradMethod,
