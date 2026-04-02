@@ -49,6 +49,8 @@ def sf_au(
         1d array of z positions
     spectral : bool, optional
         Whether to use spectral calculation of gradients, by default False
+        Note: the spectral case is not directly tested, but differs only in the
+        calculation of gradients, which is tested
 
     Returns
     -------
@@ -127,6 +129,8 @@ def sf_au_dir(
         Axis along which separations are used
     spectral : bool, optional
         Whether to use spectral calculation of gradients, by default False
+        Note: the spectral case is not directly tested, but differs only in the
+        calculation of gradients, which is tested
 
     Returns
     -------
