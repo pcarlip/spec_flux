@@ -56,9 +56,9 @@ def test_fluidsf_comp() -> None:
 
     full_sf = sf_au(u, v, w, x, y, z)
     fsf = fluidsf.generate_structure_functions_3d(u, v, w, x, y, z, ["ASF_V"])
-    assert np.isclose(full_sf[1][0, 0, :], fsf["SF_advection_velocity_x"]).all()
-    assert np.isclose(full_sf[1][0, :, 0], fsf["SF_advection_velocity_y"]).all()
-    assert np.isclose(full_sf[1][:, 0, 0], fsf["SF_advection_velocity_z"]).all()
+    np.testing.assert_allclose(full_sf[1][0, 0, :], fsf["SF_advection_velocity_x"])
+    np.testing.assert_allclose(full_sf[1][0, :, 0], fsf["SF_advection_velocity_y"])
+    np.testing.assert_allclose(full_sf[1][:, 0, 0], fsf["SF_advection_velocity_z"])
 
 
 def test_fluidsf_comp_dir() -> None:
@@ -72,15 +72,15 @@ def test_fluidsf_comp_dir() -> None:
     z = np.arange(10)
 
     fsf = fluidsf.generate_structure_functions_3d(u, v, w, x, y, z, ["ASF_V"])
-    assert np.isclose(
+    np.testing.assert_allclose(
         sf_au_dir(u, v, w, x, y, z, Axis.x)[1], fsf["SF_advection_velocity_x"]
-    ).all()
-    assert np.isclose(
+    )
+    np.testing.assert_allclose(
         sf_au_dir(u, v, w, x, y, z, Axis.y)[1], fsf["SF_advection_velocity_y"]
-    ).all()
-    assert np.isclose(
+    )
+    np.testing.assert_allclose(
         sf_au_dir(u, v, w, x, y, z, Axis.z)[1], fsf["SF_advection_velocity_z"]
-    ).all()
+    )
 
 
 def test_cupy_comp() -> None:
@@ -103,7 +103,7 @@ def test_cupy_comp() -> None:
     np_sf = sf_au(u, v, w, x, y, z)
     cp_sf = sf_au(cu, cv, cw, cx, cy, cz)
 
-    assert np.isclose(np_sf[1], cp.asnumpy(cp_sf[1])).all()
+    np.testing.assert_allclose(np_sf[1], cp.asnumpy(cp_sf[1]))
 
 
 def test_cupy_comp_dir() -> None:
@@ -126,4 +126,4 @@ def test_cupy_comp_dir() -> None:
     np_sf = sf_au_dir(u, v, w, x, y, z, Axis.x)
     cp_sf = sf_au_dir(cu, cv, cw, cx, cy, cz, Axis.x)
 
-    assert np.isclose(np_sf[1], cp.asnumpy(cp_sf[1])).all()
+    np.testing.assert_allclose(np_sf[1], cp.asnumpy(cp_sf[1]))
