@@ -90,8 +90,23 @@ def xp_fft(array: ndarray) -> tuple[ModuleType, ModuleType]:
 def spacings_krange(
     data: SimData | SimDataLite,
 ) -> tuple[tuple[float, float, float], tuple[ndarray, ndarray, ndarray]]:
+    """Get the realspace spacings and fourier-space ranges of k-values from the range of
+    x, y, and z values
+
+    Parameters
+    ----------
+    data : SimData | SimDataLite
+        Dataclass containing grid axes
+
+    Returns
+    -------
+    tuple[float, float, float]
+        grid spacings in z, y, x (assumed to be constant, but not necessarily equal)
+    tuple[ndarray, ndarray, ndarray]
+        arrays of m, l, and k values of the fourier-transformed grids
+    """
     xp, genfft = xp_fft(data.u)
-    spacings = (data.x[1] - data.x[0], data.y[1] - data.y[0], data.z[1] - data.z[0])
+    spacings = (data.z[1] - data.z[0], data.y[1] - data.y[0], data.x[1] - data.x[0])
     ranges = []
     for i in range(3):
         Ni = data.u.shape[i]
