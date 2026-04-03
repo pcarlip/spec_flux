@@ -10,21 +10,20 @@ from numerics.utils import SimDataLite, spacings_krange, xp_fft
 
 
 def test_spec_grad() -> None:
-    L = 100
-    M = 101
-    N = 102
-    frac = 0.5  # note: this improves w/ larger grids
-    u = np.ones((L, M, N))
-    xp, genfft = xp_fft(u)
-    it = np.nditer(u, flags=["multi_index"])
-    for _ in it:
-        i, j, k = it.multi_index
-        u[i, j, k] = (
-            np.sin(i * np.pi / L) * np.sin(j * 2 * np.pi / M) * np.sin(k * 3 * np.pi / N)
-        )
+    L = 200
+    M = 201
+    N = 202
     x = np.arange(N)
     y = np.arange(M)
     z = np.arange(L)
+    frac = 0.75  # note: this improves w/ larger grids
+    xp, genfft = xp_fft(x)
+    grid = xp.meshgrid(z, y, x, indexing="ij")
+    u = (
+        xp.sin(grid[0] * np.pi / L)
+        * xp.sin(grid[1] * np.pi / M)
+        * xp.sin(grid[2] * np.pi / N)
+    )
     v = u.copy()
     w = u.copy()
     data = SimDataLite(u, v, w, x, y, z)
@@ -53,10 +52,9 @@ def test_spec_grad_cp() -> None:
     x = cp.arange(N)
     y = cp.arange(M)
     z = cp.arange(L)
-    u = cp.ones((L, M, N))
-    xp, genfft = xp_fft(u)
+    xp, genfft = xp_fft(x)
     grid = xp.meshgrid(z, y, x, indexing="ij")
-    u *= (
+    u = (
         xp.sin(grid[0] * np.pi / L)
         * xp.sin(grid[1] * np.pi / M)
         * xp.sin(grid[2] * np.pi / N)
