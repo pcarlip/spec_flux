@@ -1,3 +1,5 @@
+import time
+
 import cupy as cp
 import numpy as np
 from numba import njit, prange
@@ -82,6 +84,9 @@ def sf_au(
     wadv = advection(data, Axis.z, spacings, ranges, grad_method)
 
     for i in range(L):
+        if i % 50 == 0:
+            print(i,flush=True)
+            print(time.ctime(),flush=True)
         for j in range(M):
             for k in range(N):
                 if not (i == 0 and j == 0 and k == 0):
