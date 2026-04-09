@@ -88,9 +88,9 @@ def sf_ln(
     diffs = (dz, dy, dx)
 
     for i in range(L):
-        if i % 50 == 0:
-            print(i,flush=True)
-            print(time.ctime(),flush=True)
+        if i % 25 == 0:
+            print(i, flush=True)
+            print(time.ctime(), flush=True)
         for j in range(M):
             for k in range(N):
                 if not (i == 0 and j == 0 and k == 0):
