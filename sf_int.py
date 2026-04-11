@@ -3,7 +3,7 @@ from collections.abc import Callable, Iterable
 import numpy as np
 from scipy.integrate import simpson
 
-from .utils import IntMethod, StrAxis, ndarray
+from .utils import IntMethod, StrAxis, ndarray, xp_fft
 
 
 def conv_linear(
@@ -80,18 +80,20 @@ def conv_full(
     int_method: IntMethod,
 ) -> float:
     """Internal function, implements integration for a single k value"""
+
+    xp, _ = xp_fft(sf)
     z_lst, y_lst, x_lst = diffs
-    dz = z_lst[1] - z_lst[0]
-    dy = y_lst[1] - y_lst[0]
-    dx = x_lst[1] - x_lst[0]
+    dz = float(z_lst[1] - z_lst[0])
+    dy = float(y_lst[1] - y_lst[0])
+    dx = float(x_lst[1] - x_lst[0])
 
-    integrand = np.empty_like(sf)
+    integrand = xp.empty_like(sf)
 
-    mesh = np.meshgrid(z_lst, y_lst, x_lst)
-    r = np.sqrt(mesh[0] ** 2 + mesh[1] ** 2 + mesh[2] ** 2)
+    mesh = xp.meshgrid(z_lst, y_lst, x_lst)
+    r = xp.sqrt(mesh[0] ** 2 + mesh[1] ** 2 + mesh[2] ** 2)
     if taper:
-        rmax = np.max(r)
-        taper_arr = np.sin((np.pi / 2) * (1 + r / rmax)) ** 2
+        rmax = xp.max(r)
+        taper_arr = xp.sin((np.pi / 2) * (1 + r / rmax)) ** 2
         sf_var = sf * taper_arr
     else:
         sf_var = sf
@@ -100,9 +102,11 @@ def conv_full(
     integrand[0, 0, 0] = 0.0
 
     if int_method == IntMethod.addition:
-        return np.sum(integrand) * dx * dy * dz
+        return float(xp.sum(integrand) * dx * dy * dz)
     else:
         assert int_method == IntMethod.simpson
+        if xp.__name__ == "cupy":
+            integrand = integrand.get()  # simpson doesn't seem to work for cupy arrays
         return simpson(simpson(simpson(integrand, dx=dx), dx=dy), dx=dz)  # type: ignore
 
 
