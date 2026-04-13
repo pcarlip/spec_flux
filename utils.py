@@ -5,6 +5,7 @@ from types import ModuleType
 import cupy as cp
 import cupyx.scipy.fft as cufft
 import numpy as np
+import xarray as xr
 from scipy import fft
 
 type ndarray = np.ndarray | cp.ndarray  # noqa: PYI042
@@ -116,3 +117,30 @@ def spacings_krange(
         ranges.append(k_range)
     ranges = tuple(ranges)
     return (spacings, ranges)
+
+
+def krange_int(model: xr.Dataset, n: int = 1000, log: bool = False) -> np.ndarray:
+    """Generate a reasonable range of k values from a netcdf model made in Oceananigans
+
+    Parameters
+    ----------
+    model : xr.DataArray
+        the .nc file, read into xarray
+    n : int, optional
+        number of k values to include, by default 1000
+    log : bool, optional
+        return a logspace rather than a linspace, by default False
+
+    Returns
+    -------
+    np.ndarray
+        Array of k values
+    """
+    L = float(model["x_caa"][-1]) - float(model["x_caa"][0])
+    size = len(model["x_faa"].values)
+    kmin = np.pi / L
+    kmax = kmin * size * 2
+    if log:
+        return np.logspace(np.log10(kmin), np.log10(kmax), n)
+    else:
+        return np.linspace(kmin, kmax, n)
