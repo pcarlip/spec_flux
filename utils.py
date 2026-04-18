@@ -144,3 +144,48 @@ def krange_int(model: xr.Dataset, n: int = 1000, log: bool = False) -> np.ndarra
         return np.logspace(np.log10(kmin), np.log10(kmax), n)
     else:
         return np.linspace(kmin, kmax, n)
+
+
+def ocean_interp(oc_input: xr.Dataset, time: int = -1) -> xr.Dataset:
+    """Interpolate Oceananigans output velocities to use the same axes
+
+    Parameters
+    ----------
+    oc_input : xr.Dataset
+        Oceananigans output NetCDF
+    time : int, optional
+        Index of desired timestep, by default -1
+
+    Returns
+    -------
+    xr.Dataset
+        Dataset with u,v,w on the same set of axes (cell centers)
+    """
+    uvar = (
+        oc_input["u"]
+        .isel(time=time)
+        .interp(
+            x_faa=oc_input["x_caa"],
+            method="quintic",
+            kwargs={"fill_value": "extrapolate"},
+        )
+    )
+    vvar = (
+        oc_input["v"]
+        .isel(time=time)
+        .interp(
+            y_afa=oc_input["y_aca"],
+            method="quintic",
+            kwargs={"fill_value": "extrapolate"},
+        )
+    )
+    wvar = (
+        oc_input["w"]
+        .isel(time=time)
+        .interp(
+            z_aaf=oc_input["z_aac"],
+            method="quintic",
+            kwargs={"fill_value": "extrapolate"},
+        )
+    )
+    return xr.merge([uvar, vvar, wvar])
