@@ -240,9 +240,3 @@ def ocean_interp(oc_input: xr.Dataset, time: int = -1) -> xr.Dataset:
         )
     )
     return xr.merge([uvar, vvar, wvar], compat="no_conflicts")
-
-
-def ocean_interp_lst(oc_input: xr.Dataset, times: Iterable[int]) -> xr.Dataset:
-    """Run ocean_interp on a list of times and concat results into a single Dataset
-    See `ocean_interp` for details"""
-    return xr.concat([ocean_interp(oc_input, time) for time in times], "time")
