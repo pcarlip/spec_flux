@@ -26,6 +26,20 @@ class SimData:
     y: ndarray
     z: ndarray
 
+    @classmethod
+    def from_xr(cls, ds: xr.Dataset):  # noqa: ANN206
+        return cls(
+            ds["u"].data,
+            ds["v"].data,
+            ds["w"].data,
+            ds["uadv"].data,
+            ds["vadv"].data,
+            ds["wadv"].data,
+            ds["x_caa"].data,
+            ds["y_aca"].data,
+            ds["z_aac"].data,
+        )
+
 
 @dataclass
 class SimDataLite:
@@ -38,6 +52,17 @@ class SimDataLite:
     x: ndarray
     y: ndarray
     z: ndarray
+
+    @classmethod
+    def from_xr(cls, ds: xr.Dataset):  # noqa: ANN206
+        return cls(
+            ds["u"].data,
+            ds["v"].data,
+            ds["w"].data,
+            ds["x_caa"].data,
+            ds["y_aca"].data,
+            ds["z_aac"].data,
+        )
 
 
 class GradMethod(Enum):
