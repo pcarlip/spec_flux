@@ -298,7 +298,7 @@ def ocean_interp_adv(oc_input: xr.Dataset, time: int = -1) -> xr.Dataset:
         oc_input["vadv"]
         .isel(time=time)
         .interp(
-            y_afa=oc_input["y_aca"],
+            x_faa=oc_input["x_caa"],
             method="quintic",
             kwargs={"fill_value": "extrapolate"},
         )
@@ -307,7 +307,7 @@ def ocean_interp_adv(oc_input: xr.Dataset, time: int = -1) -> xr.Dataset:
         oc_input["wadv"]
         .isel(time=time)
         .interp(
-            z_aaf=oc_input["z_aac"],
+            x_faa=oc_input["x_caa"],
             method="quintic",
             kwargs={"fill_value": "extrapolate"},
         )
