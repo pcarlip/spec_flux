@@ -213,4 +213,4 @@ def ocean_interp(oc_input: xr.Dataset, time: int = -1) -> xr.Dataset:
             kwargs={"fill_value": "extrapolate"},
         )
     )
-    return xr.merge([uvar, vvar, wvar])
+    return xr.merge([uvar, vvar, wvar], compat="no_conflicts")
