@@ -78,6 +78,15 @@ class Axis(Enum):
     x = 2
 
 
+def axis_name(ax: Axis) -> str:
+    if ax == Axis.x:
+        return "x_caa"
+    elif ax == Axis.y:
+        return "y_aca"
+    else:
+        return "z_aac"
+
+
 class StrAxis(StrEnum):
     x = "x"
     y = "y"
