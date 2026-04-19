@@ -1,5 +1,7 @@
 from typing import Literal
 
+import xarray as xr
+
 from .utils import Axis, GradMethod, SimData, SimDataLite, ndarray, xp_fft
 
 
@@ -23,7 +25,7 @@ def spectral_der(vel_hat: ndarray, k_grid: ndarray) -> ndarray:
 
 
 def advection(
-    data: SimData | SimDataLite,
+    data: SimData | SimDataLite | xr.Dataset,
     axis: Axis,
     spacings: tuple[float, ...],
     k_ranges: tuple[ndarray, ndarray, ndarray],
@@ -36,7 +38,7 @@ def advection(
     ----------
     axis : Axis
         Velocity direction to use
-    data : SimData | SimDataLite
+    data : SimData | SimDataLite | xr.Dataset
         Dataclass with velocity and (optionally) advection data
     spacings : tuple[float, ...]
         Grid spacings
@@ -58,12 +60,17 @@ def advection(
         Attempt to use GradMethod.oceananigans (precalculated advection) when
         input data doesn't include that information
     """
-    vel_lst = (data.w, data.v, data.u)
+    if type(data) is xr.Dataset:
+        vel_lst = (data.w.data, data.v.data, data.u.data)
+    else:
+        vel_lst = (data.w, data.v, data.u)
     vel = vel_lst[axis.value]
     xp, genfft = xp_fft(vel)
     if method == GradMethod.oceananigans:
         if type(data) is SimData:
             adv = (data.wadv, data.vadv, data.uadv)[axis.value]
+        elif type(data) is xr.Dataset and "uadv" in data:
+            adv = (data.wadv.data, data.vadv.data, data.uadv.data)[axis.value]
         else:
             raise Exception(
                 "Include advection arrays to use Oceananigans or other precalculated gradients"
