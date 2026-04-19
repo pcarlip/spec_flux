@@ -55,8 +55,8 @@ def fourier_prep(
 
     Parameters
     ----------
-    data : SimData
-        Dataclass with velocity and advection data
+    data : SimData | SimDataLite
+        Dataclass with velocity and (optionally) advection data
 
     Returns
     -------
@@ -88,8 +88,8 @@ def fourier_int(
 
     Parameters
     ----------
-    data : SimData
-        Dataclass with velocity and advection data
+    data : SimData | SimDataLite
+        Dataclass with velocity and (optionally) advection data
     pi_int: ndarray
         integrand for spectral flux
     klim : float
