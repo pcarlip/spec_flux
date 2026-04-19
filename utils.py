@@ -240,3 +240,76 @@ def ocean_interp(oc_input: xr.Dataset, time: int = -1) -> xr.Dataset:
         )
     )
     return xr.merge([uvar, vvar, wvar], compat="no_conflicts")
+
+
+def ocean_interp_adv(oc_input: xr.Dataset, time: int = -1) -> xr.Dataset:
+    """Interpolate Oceananigans output velocities and advection to use the same axes
+
+    Parameters
+    ----------
+    oc_input : xr.Dataset
+        Oceananigans output NetCDF. Must be stored on CPU, interpolation does not work
+        with cupy-xarray.
+    time : int, optional
+        Index of desired timestep, by default -1
+
+    Returns
+    -------
+    xr.Dataset
+        Dataset with u,v,w,uadv,vadv,wadv on the same set of axes (cell centers)
+    """
+    uvar = (
+        oc_input["u"]
+        .isel(time=time)
+        .interp(
+            x_faa=oc_input["x_caa"],
+            method="quintic",
+            kwargs={"fill_value": "extrapolate"},
+        )
+    )
+    vvar = (
+        oc_input["v"]
+        .isel(time=time)
+        .interp(
+            y_afa=oc_input["y_aca"],
+            method="quintic",
+            kwargs={"fill_value": "extrapolate"},
+        )
+    )
+    wvar = (
+        oc_input["w"]
+        .isel(time=time)
+        .interp(
+            z_aaf=oc_input["z_aac"],
+            method="quintic",
+            kwargs={"fill_value": "extrapolate"},
+        )
+    )
+    uadvvar = (
+        oc_input["uadv"]
+        .isel(time=time)
+        .interp(
+            x_faa=oc_input["x_caa"],
+            method="quintic",
+            kwargs={"fill_value": "extrapolate"},
+        )
+    )
+    vadvvar = (
+        oc_input["vadv"]
+        .isel(time=time)
+        .interp(
+            y_afa=oc_input["y_aca"],
+            method="quintic",
+            kwargs={"fill_value": "extrapolate"},
+        )
+    )
+    wadvvar = (
+        oc_input["wadv"]
+        .isel(time=time)
+        .interp(
+            z_aaf=oc_input["z_aac"],
+            method="quintic",
+            kwargs={"fill_value": "extrapolate"},
+        )
+    )
+    return xr.merge([uvar, vvar, wvar, uadvvar, vadvvar, wadvvar], compat="no_conflicts")
