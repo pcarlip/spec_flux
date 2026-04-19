@@ -4,10 +4,9 @@ from enum import Enum, StrEnum
 from types import ModuleType
 
 import cupy as cp
-import cupyx.scipy.fft as cufft
+import cupyx
 import numpy as np
 import xarray as xr
-from scipy import fft
 
 type ndarray = np.ndarray | cp.ndarray  # noqa: PYI042
 
@@ -135,7 +134,7 @@ def xp_fft(array: ndarray) -> tuple[ModuleType, ModuleType]:
         scipy.fft or cupyx.scipy.fft
     """
     xp = cp.get_array_module(array)
-    genfft = cufft if xp.__name__ == "cupy" else fft
+    genfft = cupyx.scipy.get_array_module(array).fft
     return (xp, genfft)
 
 
