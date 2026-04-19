@@ -65,6 +65,22 @@ class SimDataLite:
             ds["z_aac"].data,
         )
 
+    def to_cp(self) -> None:
+        self.u = cp.array(self.u)
+        self.v = cp.array(self.v)
+        self.w = cp.array(self.w)
+        self.x = cp.array(self.x)
+        self.y = cp.array(self.y)
+        self.z = cp.array(self.z)
+
+    def to_np(self) -> None:
+        self.u = cp.asnumpy(self.u)
+        self.v = cp.asnumpy(self.v)
+        self.w = cp.asnumpy(self.w)
+        self.x = cp.asnumpy(self.x)
+        self.y = cp.asnumpy(self.y)
+        self.z = cp.asnumpy(self.z)
+
 
 class GradMethod(Enum):
     oceananigans = 1
