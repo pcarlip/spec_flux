@@ -2,6 +2,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum, StrEnum
 from types import ModuleType
+from typing import Self
 
 import cupy as cp
 import cupyx
@@ -64,21 +65,23 @@ class SimDataLite:
             ds["z_aac"].data,
         )
 
-    def to_cp(self) -> None:
+    def to_cp(self) -> Self:
         self.u = cp.array(self.u)
         self.v = cp.array(self.v)
         self.w = cp.array(self.w)
         self.x = cp.array(self.x)
         self.y = cp.array(self.y)
         self.z = cp.array(self.z)
+        return self
 
-    def to_np(self) -> None:
+    def to_np(self) -> Self:
         self.u = cp.asnumpy(self.u)
         self.v = cp.asnumpy(self.v)
         self.w = cp.asnumpy(self.w)
         self.x = cp.asnumpy(self.x)
         self.y = cp.asnumpy(self.y)
         self.z = cp.asnumpy(self.z)
+        return self
 
 
 class GradMethod(Enum):
