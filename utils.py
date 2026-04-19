@@ -162,7 +162,7 @@ def krange_int(model: xr.Dataset, n: int = 1000, log: bool = False) -> np.ndarra
         Array of k values
     """
     L = float(model["x_caa"][-1]) - float(model["x_caa"][0])
-    size = len(model["x_faa"].values)
+    size = len(model["x_caa"].values)
     kmin = np.pi / L
     kmax = kmin * size * 2
     if log:
