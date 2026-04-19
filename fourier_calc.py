@@ -1,3 +1,5 @@
+from typing import Literal
+
 from .advection import advection
 from .utils import (
     Axis,
@@ -16,6 +18,7 @@ def pi_int_dir(
     axis: Axis,
     spacings: tuple[float, ...],
     k_ranges: tuple[ndarray, ndarray, ndarray],
+    edge_order: Literal[1, 2],
 ) -> ndarray:
     """Generate a component of  array to integrate: Re[FT(u)* • FT((u•∇)u)],
     with optional cupy acceleration
@@ -30,6 +33,9 @@ def pi_int_dir(
         Grid spacings
     k_ranges : tuple[ndarray, ndarray, ndarray]
         Range of m-values (z), l-values (y), k-values (x) associated with the grid size
+    edge_order : Literal[1, 2]
+        Order of finite difference gradients
+
 
     Returns
     -------
@@ -39,7 +45,7 @@ def pi_int_dir(
     vel = (data.w, data.v, data.u)[axis.value]
     xp, genfft = xp_fft(vel)
     vel_hat = genfft.fftshift(genfft.fftn(vel))
-    adv_realspace = advection(data, axis, spacings, k_ranges, method)
+    adv_realspace = advection(data, axis, spacings, k_ranges, method, edge_order)
     dxdydz = spacings[0] * spacings[1] * spacings[2]
     adv_spec = genfft.fftshift(genfft.fftn(adv_realspace) * dxdydz / (2 * xp.pi))
     vel_conj = xp.conj(vel_hat) * dxdydz / (2 * xp.pi)
@@ -49,6 +55,7 @@ def pi_int_dir(
 def fourier_prep(
     data: SimData | SimDataLite,
     grad_method: GradMethod = GradMethod.numpy,
+    edge_order: Literal[1, 2] = 2,
 ) -> tuple[ndarray, ndarray]:
     """Calculate integrand for spectral flux via fourier methods, with optional cupy
     acceleration
@@ -57,6 +64,10 @@ def fourier_prep(
     ----------
     data : SimData | SimDataLite
         Dataclass with velocity and (optionally) advection data
+    grad_method : GradMethod, optional
+        Method for calculating gradients, by default GradMethod.numpy
+    edge_order : Literal[1, 2], optional
+        Order of finite difference gradients, by default 2
 
     Returns
     -------
@@ -72,7 +83,9 @@ def fourier_prep(
     # not sure about the factors of 2π, those come from
     # https://github.com/BrodiePearson/Paper_Bessel_SF_Method/blob/main/analysis/Calculate_Spectral_Fluxes_2D.m
 
-    pi_int = sum(pi_int_dir(grad_method, data, axis, spacings, ranges) for axis in Axis)
+    pi_int = sum(
+        pi_int_dir(grad_method, data, axis, spacings, ranges, edge_order) for axis in Axis
+    )
     # you can get Π by integrating Re[FT(u)* • FT((u•∇)u)]
 
     k_mesh = xp.meshgrid(*ranges, indexing="ij")
@@ -90,10 +103,12 @@ def fourier_int(
     ----------
     data : SimData | SimDataLite
         Dataclass with velocity and (optionally) advection data
-    pi_int: ndarray
+    pi_int : ndarray
         integrand for spectral flux
     klim : float
         Wavenumber at which spectral flux is calculated
+    k_grid : ndarray
+        Grid of k magnitudes
 
     Returns
     -------
