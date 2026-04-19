@@ -202,7 +202,8 @@ def ocean_interp(oc_input: xr.Dataset, time: int = -1) -> xr.Dataset:
     Parameters
     ----------
     oc_input : xr.Dataset
-        Oceananigans output NetCDF
+        Oceananigans output NetCDF. Must be stored on CPU, interpolation does not work
+        with cupy-xarray.
     time : int, optional
         Index of desired timestep, by default -1
 
