@@ -1,5 +1,6 @@
 from typing import Literal
 
+import cupy_xarray
 import xarray as xr
 
 from .utils import Axis, GradMethod, SimData, SimDataLite, ndarray, xp_fft
