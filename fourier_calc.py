@@ -1,5 +1,8 @@
 from typing import Literal
 
+import cupy_xarray
+import xarray as xr
+
 from .advection import advection
 from .utils import (
     Axis,
@@ -13,11 +16,11 @@ from .utils import (
 
 
 def pi_int_dir(
-    method: GradMethod,
     data: SimData | SimDataLite,
     axis: Axis,
     spacings: tuple[float, ...],
     k_ranges: tuple[ndarray, ndarray, ndarray],
+    method: GradMethod,
     edge_order: Literal[1, 2],
 ) -> ndarray:
     """Generate a component of  array to integrate: Re[FT(u)* • FT((u•∇)u)],
@@ -84,7 +87,7 @@ def fourier_prep(
     # https://github.com/BrodiePearson/Paper_Bessel_SF_Method/blob/main/analysis/Calculate_Spectral_Fluxes_2D.m
 
     pi_int = sum(
-        pi_int_dir(grad_method, data, axis, spacings, ranges, edge_order) for axis in Axis
+        pi_int_dir(data, axis, spacings, ranges, grad_method, edge_order) for axis in Axis
     )
     # you can get Π by integrating Re[FT(u)* • FT((u•∇)u)]
 
