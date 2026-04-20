@@ -125,7 +125,7 @@ def advection_xr(
     """
     vel = (data.w, data.v, data.u)[axis.value]
     if method == GradMethod.oceananigans:
-        if "uadv" in data:
+        if "uadv" in data and "vadv" in data and "wadv" in data:
             adv = (data.wadv, data.vadv, data.uadv)[axis.value]
         else:
             raise Exception(
