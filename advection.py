@@ -85,3 +85,65 @@ def advection(
         vel_hat = genfft.fftshift(genfft.fftn(vel))
         adv = sum(spectral_der(vel_hat, k_mesh[i]) * vel_lst[i] for i in range(3))
     return adv
+
+
+def advection_xr(
+    data: xr.Dataset,
+    axis: Axis,
+    k_ranges: tuple[ndarray, ndarray, ndarray],
+    method: GradMethod,
+    ax_names: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa"),
+    edge_order: Literal[1, 2] = 1,
+) -> xr.Variable:
+    """Calculate (realspace) advection of a velocity array
+
+    Parameters
+    ----------
+    data : xr.Dataset
+        Dataset with velocity and (optionally) advection data
+    axis : Axis
+        Velocity direction to use
+    k_ranges : tuple[ndarray, ndarray, ndarray]
+        Range of m-values (z), l-values (y), k-values (x) associated with the grid size
+    method : GradMethod
+        Method for calculating velocity gradients
+    ax_names : tuple[str, str, str], optional
+        names of z, y, and x axes in dataset, by default ("z_aac", "y_aca", "x_caa")
+    edge_order : Literal[1, 2], optional
+        Order of finite difference gradients if using GradMethod.numpy, by default 1
+
+    Returns
+    -------
+    xr.Variable
+        xarray variable containing advection along the specified axis
+
+    Raises
+    ------
+    Exception
+        Attempt to use GradMethod.oceananigans (precalculated advection) when
+        input data doesn't include that information
+    """
+    vel = (data.w, data.v, data.u)[axis.value]
+    if method == GradMethod.oceananigans:
+        if "uadv" in data:
+            adv = (data.wadv, data.vadv, data.uadv)[axis.value]
+        else:
+            raise Exception(
+                "Include advection arrays to use Oceananigans or other precalculated gradients"
+            )
+    elif method == GradMethod.numpy:
+        adv = (
+            data.u * vel.differentiate(ax_names[2], edge_order)
+            + data.v * vel.differentiate(ax_names[1], edge_order)
+            + data.w * vel.differentiate(ax_names[0], edge_order)
+        )
+    else:
+        xp, genfft = xp_fft(vel.data)
+        k_mesh = xp.meshgrid(*k_ranges, indexing="ij")
+        vel_hat = genfft.fftshift(genfft.fftn(vel.data))
+        adv = (
+            spectral_der(vel_hat, k_mesh[0]) * data.w
+            + spectral_der(vel_hat, k_mesh[1]) * data.v
+            + spectral_der(vel_hat, k_mesh[2]) * data.u
+        )
+    return adv
