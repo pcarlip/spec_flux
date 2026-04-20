@@ -36,10 +36,10 @@ def advection(
 
     Parameters
     ----------
-    axis : Axis
-        Velocity direction to use
     data : SimData | SimDataLite | xr.Dataset
         Dataclass with velocity and (optionally) advection data
+    axis : Axis
+        Velocity direction to use
     spacings : tuple[float, ...]
         Grid spacings
     k_ranges : tuple[ndarray, ndarray, ndarray]
