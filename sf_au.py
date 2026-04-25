@@ -1,12 +1,23 @@
 import time
+from collections.abc import Hashable, Mapping
 
 import cupy as cp
+import cupy_xarray
 import numpy as np
+import xarray as xr
 from numba import njit, prange
 
-from .advection import advection
+from .advection import advection, advection_xr
 from .roll import roll_numba, roll_par
-from .utils import Axis, GradMethod, SimDataLite, ndarray, spacings_krange, xp_fft
+from .utils import (
+    Axis,
+    GradMethod,
+    SimDataLite,
+    axis_name,
+    ndarray,
+    spacings_krange,
+    xp_fft,
+)
 
 
 @cp.fuse
@@ -179,6 +190,45 @@ def sf_au_dir(
         sf[i] = xp.mean(sf_au_kernel(du, dv, dw, dau, dav, daw))
 
     return (diffs, sf)
+
+
+def sf_au_dir_xr(data: xr.Dataset, axis: Axis, spectral: bool = False) -> xr.DataArray:
+    z = data["z_aac"]
+    y = data["y_aca"]
+    x = data["x_caa"]
+
+    axis_xr = (z, y, x)[axis.value]
+
+    count = len(axis_xr) // 2
+    diffs = axis_xr[:count] - axis_xr[0]
+
+    grad_method = GradMethod.spectral if spectral else GradMethod.numpy
+    uadv = advection_xr(data, Axis.x, grad_method)
+    vadv = advection_xr(data, Axis.y, grad_method)
+    wadv = advection_xr(data, Axis.z, grad_method)
+
+    ax_name = axis_name(axis)
+
+    au_lst = []
+
+    for i in range(count):
+        roll: Mapping[Hashable, int] = {ax_name: i}
+        du = data["u"].roll(roll) - data["u"]
+        dv = data["v"].roll(roll) - data["v"]
+        dw = data["w"].roll(roll) - data["w"]
+        dau = uadv.roll(roll) - uadv
+        dav = vadv.roll(roll) - vadv
+        daw = wadv.roll(roll) - wadv
+        au_lst.append(
+            (du * dau + dv * dav + dw * daw)
+            .mean(["z_aac", "y_aca", "x_caa"])
+            .expand_dims(shiftby=[diffs[i]])
+            .rename(f"SF_Au,{ax_name[0]}")
+        )
+
+    out = xr.concat(au_lst, dim="shiftby").assign_coords(shiftby=diffs.data)
+
+    return out
 
 
 def sf_au_numba(
