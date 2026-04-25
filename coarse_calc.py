@@ -1,5 +1,7 @@
 import cupy as cp
-from cupyx.scipy.ndimage import gaussian_filter, uniform_filter
+import cupy_xarray
+import xarray as xr
+from cupyx.scipy.ndimage import gaussian_filter
 
 
 def pi_cg_gauss(
@@ -39,5 +41,30 @@ def pi_cg_gauss(
             tau = tau_1 - tau_2
             grad = cp.gradient(vel_arrs[i], dx, axis=j)
             running_sum -= tau * grad
+
+    return cp.mean(running_sum).get()
+
+
+def pi_cg_gauss_xr(data: xr.Dataset, k: float) -> float:
+    dx = float(data["x_caa"][1] - data["x_caa"][0])
+    running_sum = cp.zeros_like(data["u"].data)
+
+    size = (1 / k) / dx
+    vels = (data["u"], data["v"], data["w"])
+    smoothed_vels = [
+        xr.apply_ufunc(gaussian_filter, vels[i], kwargs={"sigma": size, "mode": "wrap"})
+        for i in range(3)
+    ]
+    axes = ("x_caa", "y_aca", "z_aac")
+
+    for i in range(3):
+        for j in range(3):
+            tau_1 = xr.apply_ufunc(
+                gaussian_filter, vels[i] * vels[j], kwargs={"sigma": size, "mode": "wrap"}
+            )
+            tau_2 = smoothed_vels[i] * smoothed_vels[j]
+            tau = tau_1 - tau_2
+            grad = vels[i].differentiate(axes[j], 2)
+            running_sum -= (tau * grad).data
 
     return cp.mean(running_sum).get()
