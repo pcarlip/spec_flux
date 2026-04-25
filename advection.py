@@ -3,7 +3,15 @@ from typing import Literal
 import cupy_xarray
 import xarray as xr
 
-from .utils import Axis, GradMethod, SimData, SimDataLite, ndarray, xp_fft
+from .utils import (
+    Axis,
+    GradMethod,
+    SimData,
+    SimDataLite,
+    ndarray,
+    spacings_krange,
+    xp_fft,
+)
 
 
 def spectral_der(vel_hat: ndarray, k_grid: ndarray) -> ndarray:
@@ -91,7 +99,6 @@ def advection(
 def advection_xr(
     data: xr.Dataset,
     axis: Axis,
-    k_ranges: tuple[ndarray, ndarray, ndarray],
     method: GradMethod,
     ax_names: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa"),
     edge_order: Literal[1, 2] = 1,
@@ -104,8 +111,6 @@ def advection_xr(
         Dataset with velocity and (optionally) advection data
     axis : Axis
         Velocity direction to use
-    k_ranges : tuple[ndarray, ndarray, ndarray]
-        Range of m-values (z), l-values (y), k-values (x) associated with the grid size
     method : GradMethod
         Method for calculating velocity gradients
     ax_names : tuple[str, str, str], optional
@@ -140,6 +145,7 @@ def advection_xr(
         )
     else:
         xp, genfft = xp_fft(vel.data)
+        _, k_ranges = spacings_krange(SimDataLite.from_xr(data))
         k_mesh = xp.meshgrid(*k_ranges, indexing="ij")
         vel_hat = genfft.fftshift(genfft.fftn(vel.data))
         adv = (
