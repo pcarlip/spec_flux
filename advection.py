@@ -102,7 +102,7 @@ def advection_xr(
     method: GradMethod,
     ax_names: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa"),
     edge_order: Literal[1, 2] = 1,
-) -> xr.Variable:
+) -> xr.DataArray:
     """Calculate (realspace) advection of a velocity array
 
     Parameters
@@ -120,8 +120,8 @@ def advection_xr(
 
     Returns
     -------
-    xr.Variable
-        xarray variable containing advection along the specified axis
+    xr.DataArray
+        xarray object containing advection along the specified axis
 
     Raises
     ------
@@ -129,19 +129,19 @@ def advection_xr(
         Attempt to use GradMethod.oceananigans (precalculated advection) when
         input data doesn't include that information
     """
-    vel = (data.w, data.v, data.u)[axis.value]
+    vel = (data["w"], data["v"], data["u"])[axis.value]
     if method == GradMethod.oceananigans:
         if "uadv" in data and "vadv" in data and "wadv" in data:
-            adv = (data.wadv, data.vadv, data.uadv)[axis.value]
+            adv = (data["wadv"], data["vadv"], data["uadv"])[axis.value]
         else:
             raise Exception(
                 "Include advection arrays to use Oceananigans or other precalculated gradients"
             )
     elif method == GradMethod.numpy:
         adv = (
-            data.u * vel.differentiate(ax_names[2], edge_order)
-            + data.v * vel.differentiate(ax_names[1], edge_order)
-            + data.w * vel.differentiate(ax_names[0], edge_order)
+            data["u"] * vel.differentiate(ax_names[2], edge_order)
+            + data["v"] * vel.differentiate(ax_names[1], edge_order)
+            + data["w"] * vel.differentiate(ax_names[0], edge_order)
         )
     else:
         xp, genfft = xp_fft(vel.data)
@@ -149,8 +149,8 @@ def advection_xr(
         k_mesh = xp.meshgrid(*k_ranges, indexing="ij")
         vel_hat = genfft.fftshift(genfft.fftn(vel.data))
         adv = (
-            spectral_der(vel_hat, k_mesh[0]) * data.w
-            + spectral_der(vel_hat, k_mesh[1]) * data.v
-            + spectral_der(vel_hat, k_mesh[2]) * data.u
+            data["w"] * spectral_der(vel_hat, k_mesh[0])
+            + data["v"] * spectral_der(vel_hat, k_mesh[1])
+            + data["u"] * spectral_der(vel_hat, k_mesh[2])
         )
     return adv
