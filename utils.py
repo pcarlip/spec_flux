@@ -320,7 +320,8 @@ def ocean_interp_adv(oc_input: xr.Dataset, time: int = -1) -> xr.Dataset:
 
 
 def ocean_interp_per(oc_input: xr.Dataset, time: int = -1) -> xr.Dataset:
-    """Interpolate Oceananigans output velocities to use the same axes
+    """Interpolate Oceananigans output velocities to use the same axes,
+    uses periodic interpolation
 
     Parameters
     ----------
@@ -352,3 +353,58 @@ def ocean_interp_per(oc_input: xr.Dataset, time: int = -1) -> xr.Dataset:
     wvar = splev(oc_input["z_aac"], w_interp, "periodic").rename("w")
 
     return xr.merge([uvar, vvar, wvar], compat="no_conflicts")
+
+
+def ocean_interp_adv_per(oc_input: xr.Dataset, time: int = -1) -> xr.Dataset:
+    """Interpolate Oceananigans output velocities and advection to use the same axes,
+    uses periodic interpolation
+
+    Parameters
+    ----------
+    oc_input : xr.Dataset
+        Oceananigans output NetCDF. Must be stored on CPU, interpolation does not work
+        with cupy-xarray.
+    time : int, optional
+        Index of desired timestep, by default -1
+
+    Returns
+    -------
+    xr.Dataset
+        Dataset with u,v,w,uadv,vadv,wadv on the same set of axes (cell centers)
+    """
+    u_interp = splrep(oc_input["u"].isel(time=time), "x_faa")
+    v_interp = splrep(oc_input["v"].isel(time=time), "y_afa")
+    w_interp = splrep(oc_input["w"].isel(time=time), "z_aaf")
+    uadv_interp = splrep(oc_input["uadv"].isel(time=time), "x_faa")
+    vadv_interp = splrep(oc_input["vadv"].isel(time=time), "x_faa")
+    wadv_interp = splrep(oc_input["wadv"].isel(time=time), "x_faa")
+
+    uvar = (
+        splev(oc_input["x_caa"], u_interp, "periodic")
+        .rename("u")
+        .transpose("z_aac", "y_aca", "x_caa", transpose_coords=True)
+    )
+    vvar = (
+        splev(oc_input["y_aca"], v_interp, "periodic")
+        .rename("v")
+        .transpose("z_aac", "y_aca", "x_caa", transpose_coords=True)
+    )
+    wvar = splev(oc_input["z_aac"], w_interp, "periodic").rename("w")
+
+    uadvvar = (
+        splev(oc_input["x_caa"], uadv_interp, "periodic")
+        .rename("uadv")
+        .transpose("z_aac", "y_aca", "x_caa", transpose_coords=True)
+    )
+    vadvvar = (
+        splev(oc_input["x_caa"], vadv_interp, "periodic")
+        .rename("vadv")
+        .transpose("z_aac", "y_aca", "x_caa", transpose_coords=True)
+    )
+    wadvvar = (
+        splev(oc_input["x_caa"], wadv_interp, "periodic")
+        .rename("wadv")
+        .transpose("z_aac", "y_aca", "x_caa", transpose_coords=True)
+    )
+
+    return xr.merge([uvar, vvar, wvar, uadvvar, vadvvar, wadvvar], compat="no_conflicts")
