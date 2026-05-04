@@ -1,11 +1,13 @@
 import time
 
 import cupy as cp
+import cupy_xarray
 import numpy as np
+import xarray as xr
 from numba import njit, prange
 
 from .roll import roll_numba, roll_par
-from .utils import Axis, ndarray
+from .utils import Axis, axis_name, ndarray
 
 # steps:
 # set of motion amounts: can just use motion of i,j,k for range N//2
@@ -165,6 +167,27 @@ def sf_ln_dir(
         sf[i] = xp.mean((xp.roll(vel, -i, axis.value) - vel) ** order)
 
     return (diffs, sf)
+
+
+def sf_ln_dir_xr(data: xr.Dataset, axis: Axis, order: int = 3) -> xr.DataArray:
+    ax_name = axis_name(axis)
+    axis_xr = data[ax_name]
+    vel = (data["w"], data["v"], data["u"])[axis.value]
+
+    count = len(axis_xr) // 2
+    diffs = axis_xr[:count] - axis_xr[0]
+
+    ln_lst = [
+        (
+            ((vel.roll({ax_name: -i}) - vel) ** order)
+            .mean(["z_aac", "y_aca", "x_caa"])
+            .expand_dims(shiftby=[diffs[i]])
+            .rename(f"SF_{'L' * order},{ax_name[0]}")
+        )
+        for i in range(count)
+    ]
+
+    return xr.concat(ln_lst, dim="shiftby").assign_coords(shiftby=diffs.data)
 
 
 def sf_ln_numba(
