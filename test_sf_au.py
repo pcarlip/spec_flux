@@ -7,7 +7,7 @@ import numpy as np
 import xarray as xr
 
 sys.path.append("..")
-from numerics.sf_au import Axis, sf_au, sf_au_dir, sf_au_dir_xr
+from numerics.sf_au import Axis, sf_au, sf_au_dir, sf_au_dir_xr, sf_au_xr
 
 
 def test_minimal() -> None:
@@ -197,3 +197,22 @@ def test_cupy_comp_dir() -> None:
     cp_sf_z = sf_au_dir(cu, cv, cw, cx, cy, cz, Axis.z)
 
     np.testing.assert_allclose(np_sf_z[1], cp.asnumpy(cp_sf_z[1]))
+
+
+def test_xr_comp() -> None:
+    rng = np.random.default_rng(31415)
+    u = rng.normal(size=(10, 11, 12))
+    v = rng.normal(size=(10, 11, 12))
+    w = rng.normal(size=(10, 11, 12))
+    x = np.arange(12)
+    y = np.arange(11)
+    z = np.arange(10)
+
+    dims = ("z_aac", "y_aca", "x_caa")
+
+    ds = xr.Dataset(
+        {"u": (dims, u), "v": (dims, v), "w": (dims, w)},
+        coords={"z_aac": z, "y_aca": y, "x_caa": x},
+    )
+
+    np.testing.assert_allclose(sf_au_xr(ds).data[0], sf_au(u, v, w, x, y, z)[1])
