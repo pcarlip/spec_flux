@@ -192,6 +192,55 @@ def sf_au_dir(
     return (diffs, sf)
 
 
+def sf_au_xr(
+    data: xr.Dataset, spectral: bool = False, spacing: int = 1, offset: int = 0
+) -> xr.DataArray:
+    z = data["z_aac"]
+    y = data["y_aca"]
+    x = data["x_caa"]
+
+    Nx = (len(x) // 2) // spacing
+    Ny = (len(y) // 2) // spacing
+    Nz = (len(z) // 2) // spacing
+
+    dx = x[offset : Nx * spacing + offset : spacing] - x[offset]
+    dy = y[offset : Nx * spacing + offset : spacing] - y[offset]
+    dz = z[offset : Nx * spacing + offset : spacing] - z[offset]
+
+    print(dx)
+
+    grad_method = GradMethod.spectral if spectral else GradMethod.numpy
+    uadv = advection_xr(data, Axis.x, grad_method)
+    vadv = advection_xr(data, Axis.y, grad_method)
+    wadv = advection_xr(data, Axis.z, grad_method)
+
+    au_lst = []
+
+    for i in range(Nz):
+        for j in range(Ny):
+            for k in range(Nx):
+                roll: Mapping[Hashable, int] = {
+                    "z_aac": i * spacing + offset,
+                    "y_aca": j * spacing + offset,
+                    "x_caa": k * spacing + offset,
+                }
+                du = data["u"].roll(roll) - data["u"]
+                dv = data["v"].roll(roll) - data["v"]
+                dw = data["w"].roll(roll) - data["w"]
+                dau = uadv.roll(roll) - uadv
+                dav = vadv.roll(roll) - vadv
+                daw = wadv.roll(roll) - wadv
+                au_lst.append(
+                    (du * dau + dv * dav + dw * daw)
+                    .mean(["z_aac", "y_aca", "x_caa"])
+                    .expand_dims(dz=[dz[i]], dy=[dy[j]], dx=[dx[k]])
+                    .rename("SF_Au")
+                )
+    print(au_lst[1])
+    out = xr.combine_by_coords(au_lst)
+    return out if type(out) is xr.DataArray else out.to_dataarray()
+
+
 def sf_au_dir_xr(data: xr.Dataset, axis: Axis, spectral: bool = False) -> xr.DataArray:
     z = data["z_aac"]
     y = data["y_aca"]
