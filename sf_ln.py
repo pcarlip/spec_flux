@@ -1,4 +1,5 @@
 import time
+from collections.abc import Hashable, Iterable, Mapping
 
 import cupy as cp
 import cupy_xarray
@@ -208,6 +209,87 @@ def sf_ln_dir_xr(data: xr.Dataset, axis: Axis, order: int = 3) -> xr.DataArray:
     return xr.concat(ln_lst, dim=f"d{ax_name[0]}").assign_coords(
         {f"d{ax_name[0]}": diffs.data}
     )
+
+
+def sf_ln_xr(
+    data: xr.Dataset,
+    order: int = 3,
+    spacing: int = 1,
+    offset: int = 0,
+    spacing_lst: Iterable[int] | None = None,
+    spacing_dict: dict[str, Iterable[int]] | None = None,
+) -> xr.DataArray:
+    """Calculate the advective structure function for an xarray dataset, with all
+    combinations of spacings in some range
+
+    Parameters
+    ----------
+    data : xr.Dataset
+        Dataset with velocities u, v, w; dimensions x_caa, y_aca, z_aac
+    spectral : bool, optional
+        Use spectral derivatives to calculate advection, by default False
+    spacing : int, optional
+        Use every nth spacing along each axis, if spacing_lst or spacing_dict not given,
+        by default 1
+    offset : int, optional
+        Offset the first spacing by m before starting, if spacing_lst or spacing_dict
+        not given, by default 0
+    spacing_lst : Iterable[int] | None, optional
+        List of (integer) spacings to use along all axes, by default None
+    spacing_dict : dict[str, Iterable[int]] | None, optional
+        Dict of (integer) spacings to use along each distinct axis, with keys x,y,z,
+        by default None
+
+    Returns
+    -------
+    xr.DataArray
+        3D data of the structure function at each spacing combination
+    """
+    z = data["z_aac"]
+    y = data["y_aca"]
+    x = data["x_caa"]
+
+    if spacing_lst is not None:
+        xind = spacing_lst
+        yind = spacing_lst
+        zind = spacing_lst
+    elif spacing_dict is not None:
+        xind = spacing_dict["x"]
+        yind = spacing_dict["y"]
+        zind = spacing_dict["z"]
+    else:
+        Nx = len(x) // 2
+        Ny = len(y) // 2
+        Nz = len(z) // 2
+        xind = range(offset, Nx, spacing)
+        yind = range(offset, Ny, spacing)
+        zind = range(offset, Nz, spacing)
+
+    dx = [x[i] - x[0] for i in xind]
+    dy = [y[i] - y[0] for i in yind]
+    dz = [z[i] - z[0] for i in zind]
+
+    ln_lst = []
+
+    for i in zind:
+        for j in yind:
+            for k in xind:
+                if not (i == 0 and j == 0 and k == 0):
+                    roll: Mapping[Hashable, int] = {"z_aac": -i, "y_aca": -j, "x_caa": -k}
+                    du = data["u"].roll(roll) - data["u"]
+                    dv = data["v"].roll(roll) - data["v"]
+                    dw = data["w"].roll(roll) - data["w"]
+                    r = np.sqrt(i**2 + j**2 + k**2)
+                    du_l = (((du * k + dv * j + dw * i) / r) ** order).mean(
+                        ["z_aac", "y_aca", "x_caa"]
+                    )
+                else:
+                    du_l = xr.DataArray(0)
+                ln_lst.append(
+                    du_l.expand_dims(dz=[dz[i]], dy=[dy[j]], dx=[dx[k]]).rename("SF_Au")
+                )
+    out = xr.combine_by_coords(ln_lst)
+    return out if type(out) is xr.DataArray else out.to_dataarray()
 
 
 def sf_ln_numba(
