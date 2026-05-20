@@ -260,11 +260,7 @@ def sf_au_xr(
     for i in zind:
         for j in yind:
             for k in xind:
-                roll: Mapping[Hashable, int] = {
-                    "z_aac": i * spacing + offset,
-                    "y_aca": j * spacing + offset,
-                    "x_caa": k * spacing + offset,
-                }
+                roll: Mapping[Hashable, int] = {"z_aac": i, "y_aca": j, "x_caa": k}
                 du = data["u"].roll(roll) - data["u"]
                 dv = data["v"].roll(roll) - data["v"]
                 dw = data["w"].roll(roll) - data["w"]
