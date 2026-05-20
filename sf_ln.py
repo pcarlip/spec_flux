@@ -64,7 +64,7 @@ def sf_ln(
         1d array of y positions
     z : ndarray
         1d array of z positions
-    order : int
+    order : int, optional
         power of the velocity differences (e.g. use SF_LL or LLL)
         Default value is 3 (LLL)
 
@@ -135,7 +135,7 @@ def sf_ln_dir(
         1d array of z positions
     axis: Axis
         Axis along which separations are used
-    order : int
+    order : int, optional
         power of the velocity differences (e.g. use SF_LL or LLL)
         Default value is 3 (LLL)
 
@@ -170,6 +170,24 @@ def sf_ln_dir(
 
 
 def sf_ln_dir_xr(data: xr.Dataset, axis: Axis, order: int = 3) -> xr.DataArray:
+    """Get the nth order structure function of an xarray dataset with all spacings along
+    a specified axis
+
+    Parameters
+    ----------
+    data : xr.Dataset
+        Dataset with velocities u, v, w; dimensions x_caa, y_aca, z_aac
+    axis : Axis
+        Axis along which to shift the velocities and advections
+    order : int, optional
+        power of the velocity differences (e.g. use SF_LL or LLL)
+        Default value is 3 (LLL)
+
+    Returns
+    -------
+    xr.DataArray
+        1D DataArray with structure function values and spacings
+    """
     ax_name = axis_name(axis)
     axis_xr = data[ax_name]
     vel = (data["w"], data["v"], data["u"])[axis.value]
@@ -181,13 +199,15 @@ def sf_ln_dir_xr(data: xr.Dataset, axis: Axis, order: int = 3) -> xr.DataArray:
         (
             ((vel.roll({ax_name: -i}) - vel) ** order)
             .mean(["z_aac", "y_aca", "x_caa"])
-            .expand_dims(shiftby=[diffs[i]])
+            .expand_dims({f"d{ax_name[0]}": [diffs[i]]})
             .rename(f"SF_{'L' * order},{ax_name[0]}")
         )
         for i in range(count)
     ]
 
-    return xr.concat(ln_lst, dim="shiftby").assign_coords(shiftby=diffs.data)
+    return xr.concat(ln_lst, dim=f"d{ax_name[0]}").assign_coords(
+        {f"d{ax_name[0]}": diffs.data}
+    )
 
 
 def sf_ln_numba(
