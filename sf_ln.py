@@ -285,6 +285,8 @@ def sf_ln_xr(
                     )
                 else:
                     du_l = xr.DataArray(0)
+                    if data.cupy.is_cupy:
+                        du_l = du_l.as_cupy()
                 ln_lst.append(
                     du_l.expand_dims(dz=[dzi], dy=[dyj], dx=[dxk]).rename("SF_Au")
                 )
