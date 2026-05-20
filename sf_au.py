@@ -1,5 +1,5 @@
 import time
-from collections.abc import Hashable, Mapping
+from collections.abc import Hashable, Iterable, Mapping
 
 import cupy as cp
 import cupy_xarray
@@ -193,21 +193,62 @@ def sf_au_dir(
 
 
 def sf_au_xr(
-    data: xr.Dataset, spectral: bool = False, spacing: int = 1, offset: int = 0
+    data: xr.Dataset,
+    spectral: bool = False,
+    spacing: int = 1,
+    offset: int = 0,
+    spacing_lst: Iterable[int] | None = None,
+    spacing_dict: dict[str, Iterable[int]] | None = None,
 ) -> xr.DataArray:
+    """Calculate the advective structure function for an xarray dataset, with all
+    combinations of spacings in some range
+
+    Parameters
+    ----------
+    data : xr.Dataset
+        _description_
+    spectral : bool, optional
+        Use spectral derivatives to calculate advection, by default False
+    spacing : int, optional
+        Use every nth spacing along each axis, if spacing_lst or spacing_dict not given,
+        by default 1
+    offset : int, optional
+        Offset the first spacing by m before starting, if spacing_lst or spacing_dict
+        not given, by default 0
+    spacing_lst : Iterable[int] | None, optional
+        List of (integer) spacings to use along all axes, by default None
+    spacing_dict : dict[str, Iterable[int]] | None, optional
+        Dict of (integer) spacings to use along each distinct axis, with keys 'x','y','z',
+        by default None
+
+    Returns
+    -------
+    xr.DataArray
+        3D data of the structure function at each spacing combination
+    """
     z = data["z_aac"]
     y = data["y_aca"]
     x = data["x_caa"]
 
-    Nx = (len(x) // 2) // spacing
-    Ny = (len(y) // 2) // spacing
-    Nz = (len(z) // 2) // spacing
+    if spacing_lst is not None:
+        xind = spacing_lst
+        yind = spacing_lst
+        zind = spacing_lst
+    elif spacing_dict is not None:
+        xind = spacing_dict["x"]
+        yind = spacing_dict["y"]
+        zind = spacing_dict["z"]
+    else:
+        Nx = len(x) // 2
+        Ny = len(y) // 2
+        Nz = len(z) // 2
+        xind = range(offset, Nx, spacing)
+        yind = range(offset, Ny, spacing)
+        zind = range(offset, Nz, spacing)
 
-    dx = x[offset : Nx * spacing + offset : spacing] - x[offset]
-    dy = y[offset : Nx * spacing + offset : spacing] - y[offset]
-    dz = z[offset : Nx * spacing + offset : spacing] - z[offset]
-
-    print(dx)
+    dx = [x[i] - x[0] for i in xind]
+    dy = [y[i] - y[0] for i in yind]
+    dz = [z[i] - z[0] for i in zind]
 
     grad_method = GradMethod.spectral if spectral else GradMethod.numpy
     uadv = advection_xr(data, Axis.x, grad_method)
@@ -216,9 +257,9 @@ def sf_au_xr(
 
     au_lst = []
 
-    for i in range(Nz):
-        for j in range(Ny):
-            for k in range(Nx):
+    for i in zind:
+        for j in yind:
+            for k in xind:
                 roll: Mapping[Hashable, int] = {
                     "z_aac": i * spacing + offset,
                     "y_aca": j * spacing + offset,
