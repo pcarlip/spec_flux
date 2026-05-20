@@ -260,7 +260,7 @@ def sf_au_xr(
     for i in zind:
         for j in yind:
             for k in xind:
-                roll: Mapping[Hashable, int] = {"z_aac": i, "y_aca": j, "x_caa": k}
+                roll: Mapping[Hashable, int] = {"z_aac": -i, "y_aca": -j, "x_caa": -k}
                 du = data["u"].roll(roll) - data["u"]
                 dv = data["v"].roll(roll) - data["v"]
                 dw = data["w"].roll(roll) - data["w"]
@@ -315,7 +315,7 @@ def sf_au_dir_xr(data: xr.Dataset, axis: Axis, spectral: bool = False) -> xr.Dat
     au_lst = []
 
     for i in range(count):
-        roll: Mapping[Hashable, int] = {ax_name: i}
+        roll: Mapping[Hashable, int] = {ax_name: -i}
         du = data["u"].roll(roll) - data["u"]
         dv = data["v"].roll(roll) - data["v"]
         dw = data["w"].roll(roll) - data["w"]
