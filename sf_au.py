@@ -273,7 +273,7 @@ def sf_au_xr(
                     .expand_dims(dz=[dzi], dy=[dyj], dx=[dxk])
                     .rename("SF_Au")
                 )
-    print(au_lst[1])
+
     out = xr.combine_by_coords(au_lst)
     return out if type(out) is xr.DataArray else out.to_dataarray()
 
