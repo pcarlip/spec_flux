@@ -206,7 +206,7 @@ def sf_au_xr(
     Parameters
     ----------
     data : xr.Dataset
-        _description_
+        Dataset with velocities u, v, w; dimensions x_caa, y_aca, z_aac
     spectral : bool, optional
         Use spectral derivatives to calculate advection, by default False
     spacing : int, optional
@@ -218,7 +218,7 @@ def sf_au_xr(
     spacing_lst : Iterable[int] | None, optional
         List of (integer) spacings to use along all axes, by default None
     spacing_dict : dict[str, Iterable[int]] | None, optional
-        Dict of (integer) spacings to use along each distinct axis, with keys 'x','y','z',
+        Dict of (integer) spacings to use along each distinct axis, with keys x,y,z,
         by default None
 
     Returns
@@ -283,6 +283,23 @@ def sf_au_xr(
 
 
 def sf_au_dir_xr(data: xr.Dataset, axis: Axis, spectral: bool = False) -> xr.DataArray:
+    """Get the advective structure function of an xarray dataset with all spacings along
+    a specified axis
+
+    Parameters
+    ----------
+    data : xr.Dataset
+        Dataset with velocities u, v, w; dimensions x_caa, y_aca, z_aac
+    axis : Axis
+        Axis along which to shift the velocities and advections
+    spectral : bool, optional
+        Use spectral derivatives to calculate advection, by default False
+
+    Returns
+    -------
+    xr.DataArray
+        1D DataArray with structure function values and spacings
+    """
     z = data["z_aac"]
     y = data["y_aca"]
     x = data["x_caa"]
@@ -312,11 +329,13 @@ def sf_au_dir_xr(data: xr.Dataset, axis: Axis, spectral: bool = False) -> xr.Dat
         au_lst.append(
             (du * dau + dv * dav + dw * daw)
             .mean(["z_aac", "y_aca", "x_caa"])
-            .expand_dims(shiftby=[diffs[i]])
+            .expand_dims({f"d{ax_name[0]}": [diffs[i]]})
             .rename(f"SF_Au,{ax_name[0]}")
         )
 
-    out = xr.concat(au_lst, dim="shiftby").assign_coords(shiftby=diffs.data)
+    out = xr.concat(au_lst, dim=f"d{ax_name[0]}").assign_coords(
+        {f"d{ax_name[0]}": diffs.data}
+    )
 
     return out
 
