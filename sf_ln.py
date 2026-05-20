@@ -271,9 +271,9 @@ def sf_ln_xr(
 
     ln_lst = []
 
-    for i in zind:
-        for j in yind:
-            for k in xind:
+    for i, dzi in zip(zind, dz, strict=True):
+        for j, dyj in zip(yind, dy, strict=True):
+            for k, dxk in zip(xind, dx, strict=True):
                 if not (i == 0 and j == 0 and k == 0):
                     roll: Mapping[Hashable, int] = {"z_aac": -i, "y_aca": -j, "x_caa": -k}
                     du = data["u"].roll(roll) - data["u"]
@@ -286,7 +286,7 @@ def sf_ln_xr(
                 else:
                     du_l = xr.DataArray(0)
                 ln_lst.append(
-                    du_l.expand_dims(dz=[dz[i]], dy=[dy[j]], dx=[dx[k]]).rename("SF_Au")
+                    du_l.expand_dims(dz=[dzi], dy=[dyj], dx=[dxk]).rename("SF_Au")
                 )
     out = xr.combine_by_coords(ln_lst)
     return out if type(out) is xr.DataArray else out.to_dataarray()

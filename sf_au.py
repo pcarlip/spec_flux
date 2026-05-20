@@ -257,9 +257,9 @@ def sf_au_xr(
 
     au_lst = []
 
-    for i in zind:
-        for j in yind:
-            for k in xind:
+    for i, dzi in zip(zind, dz, strict=True):
+        for j, dyj in zip(yind, dy, strict=True):
+            for k, dxk in zip(xind, dx, strict=True):
                 roll: Mapping[Hashable, int] = {"z_aac": -i, "y_aca": -j, "x_caa": -k}
                 du = data["u"].roll(roll) - data["u"]
                 dv = data["v"].roll(roll) - data["v"]
@@ -270,7 +270,7 @@ def sf_au_xr(
                 au_lst.append(
                     (du * dau + dv * dav + dw * daw)
                     .mean(["z_aac", "y_aca", "x_caa"])
-                    .expand_dims(dz=[dz[i]], dy=[dy[j]], dx=[dx[k]])
+                    .expand_dims(dz=[dzi], dy=[dyj], dx=[dxk])
                     .rename("SF_Au")
                 )
     print(au_lst[1])
