@@ -1,9 +1,11 @@
 from typing import Literal
 
 import cupy_xarray
+import numpy as np
 import xarray as xr
+import xrft
 
-from .advection import advection
+from .advection import advection, advection_xr
 from .utils import (
     Axis,
     GradMethod,
@@ -55,6 +57,19 @@ def pi_int_dir(
     return xp.real(vel_conj * adv_spec)
 
 
+def pi_int_dir_xr(
+    data: xr.Dataset,
+    axis: Axis,
+    method: GradMethod,
+    edge_order: Literal[1, 2] = 2,
+) -> xr.DataArray:
+    vel = (data.w, data.v, data.u)[axis.value]
+    adv_realspace = advection_xr(data, axis, method, edge_order=edge_order)
+    vel_hat = np.conj(xrft.fft(vel))
+    adv_spec = xrft.fft(adv_realspace)
+    return np.conj(adv_spec * vel_hat)  # type: ignore
+
+
 def fourier_prep(
     data: SimData | SimDataLite,
     grad_method: GradMethod = GradMethod.numpy,
@@ -97,6 +112,18 @@ def fourier_prep(
     return (pi_int, k_grid)
 
 
+def fourier_prep_xr(
+    data: xr.Dataset,
+    grad_method: GradMethod = GradMethod.numpy,
+    edge_order: Literal[1, 2] = 2,
+) -> xr.Dataset:
+    pi_int: xr.DataArray = sum(
+        pi_int_dir_xr(data, axis, grad_method, edge_order) for axis in Axis
+    ).rename("pi_int")  # type: ignore
+    k = (pi_int.freq_x_caa**2 + pi_int.freq_y_aca**2 + pi_int.freq_z_aac**2).rename("k")
+    return xr.merge([pi_int, k]).assign_attrs({"L": data.x_caa[-1] - data.x_caa[0]})
+
+
 def fourier_int(
     data: SimData | SimDataLite, pi_int: ndarray, klim: float, k_grid: ndarray
 ) -> float:
@@ -129,3 +156,15 @@ def fourier_int(
     # I think the L**3 is a normalization condition, I'm not sure why I need the 2π
     # but it doesn't match structure function methods without it
     return float(xp.sum(masked_array) * dk**3 / (2 * xp.pi * L**3))
+
+
+def fourier_int_xr(data: xr.Dataset, klim: float) -> float:
+    masked = data["pi_int"].where(data["k"] <= (klim / (2 * np.pi)) ** 2, 0.0)
+    return np.real(
+        (
+            masked.integrate(["freq_x_caa", "freq_y_aca", "freq_z_aac"])
+            .as_numpy()
+            .data.item()
+        )
+        / data.L**3
+    )
