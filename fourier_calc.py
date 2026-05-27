@@ -19,6 +19,8 @@ from .utils import (
 )
 
 
+# note: I need true_phase=false for this to work; otherwise fftshift breaks when used on
+# cupy xarray
 def _fft_module(da):
     if da.chunks:
         return dsar.fft
