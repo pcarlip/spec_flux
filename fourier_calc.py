@@ -1,6 +1,8 @@
 from typing import Literal
 
+import cupy as cp
 import cupy_xarray
+import dask.array as dsar
 import numpy as np
 import xarray as xr
 import xrft
@@ -15,6 +17,18 @@ from .utils import (
     spacings_krange,
     xp_fft,
 )
+
+
+def _fft_module(da):
+    if da.chunks:
+        return dsar.fft
+    elif da.cupy.is_cupy:
+        return cp.fft
+    else:
+        return np.fft
+
+
+xrft.xrft._fft_module = _fft_module
 
 
 def pi_int_dir(
@@ -65,8 +79,8 @@ def pi_int_dir_xr(
 ) -> xr.DataArray:
     vel = (data.w, data.v, data.u)[axis.value]
     adv_realspace = advection_xr(data, axis, method, edge_order=edge_order)
-    vel_hat = np.conj(xrft.fft(vel))
-    adv_spec = xrft.fft(adv_realspace)
+    vel_hat = np.conj(xrft.fft(vel, true_phase=False))
+    adv_spec = xrft.fft(adv_realspace, true_phase=False)
     return np.conj(adv_spec * vel_hat)  # type: ignore
 
 
@@ -121,7 +135,11 @@ def fourier_prep_xr(
         pi_int_dir_xr(data, axis, grad_method, edge_order) for axis in Axis
     ).rename("pi_int")  # type: ignore
     k = (pi_int.freq_x_caa**2 + pi_int.freq_y_aca**2 + pi_int.freq_z_aac**2).rename("k")
-    return xr.merge([pi_int, k]).assign_attrs({"L": data.x_caa[-1] - data.x_caa[0]})
+    out = xr.merge([pi_int, k]).assign_attrs({"L": data.x_caa[-1] - data.x_caa[0]})
+    if pi_int.cupy.is_cupy:
+        return out.as_cupy()
+    else:
+        return out
 
 
 def fourier_int(
@@ -160,11 +178,5 @@ def fourier_int(
 
 def fourier_int_xr(data: xr.Dataset, klim: float) -> float:
     masked = data["pi_int"].where(data["k"] <= (klim / (2 * np.pi)) ** 2, 0.0)
-    return np.real(
-        (
-            masked.integrate(["freq_x_caa", "freq_y_aca", "freq_z_aac"])
-            .as_numpy()
-            .data.item()
-        )
-        / data.L**3
-    )
+    val = masked.integrate(["freq_x_caa", "freq_y_aca", "freq_z_aac"])
+    return np.real(val.item()) / data.L**3
