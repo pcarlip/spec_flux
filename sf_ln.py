@@ -218,6 +218,7 @@ def sf_ln_xr(
     offset: int = 0,
     spacing_lst: Iterable[int] | None = None,
     spacing_dict: dict[str, Iterable[int]] | None = None,
+    debug_print: bool = False,
 ) -> xr.DataArray:
     """Calculate the advective structure function for an xarray dataset, with all
     combinations of spacings in some range
@@ -272,6 +273,8 @@ def sf_ln_xr(
     ln_lst = []
 
     for i, dzi in zip(zind, dz, strict=True):
+        if i % 5 == 0 and debug_print:
+            print(i)
         for j, dyj in zip(yind, dy, strict=True):
             for k, dxk in zip(xind, dx, strict=True):
                 if not (i == 0 and j == 0 and k == 0):

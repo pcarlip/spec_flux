@@ -199,6 +199,7 @@ def sf_au_xr(
     offset: int = 0,
     spacing_lst: Iterable[int] | None = None,
     spacing_dict: dict[str, Iterable[int]] | None = None,
+    debug_print: bool = False,
 ) -> xr.DataArray:
     """Calculate the advective structure function for an xarray dataset, with all
     combinations of spacings in some range
@@ -258,6 +259,8 @@ def sf_au_xr(
     au_lst = []
 
     for i, dzi in zip(zind, dz, strict=True):
+        if i % 5 == 0 and debug_print:
+            print(i)
         for j, dyj in zip(yind, dy, strict=True):
             for k, dxk in zip(xind, dx, strict=True):
                 roll: Mapping[Hashable, int] = {"z_aac": -i, "y_aca": -j, "x_caa": -k}
