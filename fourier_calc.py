@@ -19,20 +19,6 @@ from .utils import (
 )
 
 
-# note: I need true_phase=false for this to work; otherwise fftshift breaks when used on
-# cupy xarray
-def _fft_module(da):
-    if da.chunks:
-        return dsar.fft
-    elif da.cupy.is_cupy:
-        return cp.fft
-    else:
-        return np.fft
-
-
-xrft.xrft._fft_module = _fft_module
-
-
 def pi_int_dir(
     data: SimData | SimDataLite,
     axis: Axis,
@@ -81,8 +67,8 @@ def pi_int_dir_xr(
 ) -> xr.DataArray:
     vel = (data.w, data.v, data.u)[axis.value]
     adv_realspace = advection_xr(data, axis, method, edge_order=edge_order)
-    vel_hat = np.conj(xrft.fft(vel, true_phase=False))
-    adv_spec = xrft.fft(adv_realspace, true_phase=False)
+    vel_hat = np.conj(xrft.fft(vel))
+    adv_spec = xrft.fft(adv_realspace)
     return np.conj(adv_spec * vel_hat)  # type: ignore
 
 
