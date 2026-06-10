@@ -200,15 +200,19 @@ def sf_ln_dir_xr(data: xr.Dataset, axis: Axis, order: int = 3) -> xr.DataArray:
         (
             ((vel.roll({ax_name: -i}) - vel) ** order)
             .mean(["z_aac", "y_aca", "x_caa"])
-            .expand_dims({f"d{ax_name[0]}": [diffs[i]]})
+            .expand_dims({"dr": [diffs[i]]})
             .rename(f"SF_{'L' * order}_{ax_name[0]}")
         )
         for i in range(count)
     ]
 
-    return xr.concat(ln_lst, dim=f"d{ax_name[0]}").assign_coords(
-        {f"d{ax_name[0]}": diffs.data}
+    out = (
+        xr.concat(ln_lst, dim="dr")
+        .assign_coords({"dr": diffs.data})
+        .assign_attrs(axis=ax_name[0])
     )
+    out = out.assign_coords({"k": 2 * np.pi / out.dr})
+    return out
 
 
 def sf_ln_xr(

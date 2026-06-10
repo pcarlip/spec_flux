@@ -325,16 +325,20 @@ def sf_au_dir_xr(data: xr.Dataset, axis: Axis, spectral: bool = False) -> xr.Dat
         dau = uadv.roll(roll) - uadv
         dav = vadv.roll(roll) - vadv
         daw = wadv.roll(roll) - wadv
-        au_lst.append(
+        au = (
             (du * dau + dv * dav + dw * daw)
             .mean(["z_aac", "y_aca", "x_caa"])
-            .expand_dims({f"d{ax_name[0]}": [diffs[i]]})
+            .expand_dims({"dr": [diffs[i]]})
             .rename(f"SF_Au_{ax_name[0]}")
         )
+        au_lst.append(au)
 
-    out = xr.concat(au_lst, dim=f"d{ax_name[0]}").assign_coords(
-        {f"d{ax_name[0]}": diffs.data}
+    out = (
+        xr.concat(au_lst, dim="dr")
+        .assign_coords({"dr": diffs.data})
+        .assign_attrs(axis=ax_name[0])
     )
+    out = out.assign_coords({"k": 2 * np.pi / out.dr})
 
     return out
 
