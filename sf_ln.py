@@ -201,7 +201,7 @@ def sf_ln_dir_xr(data: xr.Dataset, axis: Axis, order: int = 3) -> xr.DataArray:
             ((vel.roll({ax_name: -i}) - vel) ** order)
             .mean(["z_aac", "y_aca", "x_caa"])
             .expand_dims({f"d{ax_name[0]}": [diffs[i]]})
-            .rename(f"SF_{'L' * order},{ax_name[0]}")
+            .rename(f"SF_{'L' * order}_{ax_name[0]}")
         )
         for i in range(count)
     ]
@@ -291,7 +291,9 @@ def sf_ln_xr(
                     if data.cupy.is_cupy:
                         du_l = du_l.as_cupy()
                 ln_lst.append(
-                    du_l.expand_dims(dz=[dzi], dy=[dyj], dx=[dxk]).rename("SF_Au")
+                    du_l.expand_dims(dz=[dzi], dy=[dyj], dx=[dxk]).rename(
+                        f"SF_{'L' * order}"
+                    )
                 )
     out = xr.combine_by_coords(ln_lst)
     return out if type(out) is xr.DataArray else out.to_dataarray()

@@ -329,7 +329,7 @@ def sf_au_dir_xr(data: xr.Dataset, axis: Axis, spectral: bool = False) -> xr.Dat
             (du * dau + dv * dav + dw * daw)
             .mean(["z_aac", "y_aca", "x_caa"])
             .expand_dims({f"d{ax_name[0]}": [diffs[i]]})
-            .rename(f"SF_Au,{ax_name[0]}")
+            .rename(f"SF_Au_{ax_name[0]}")
         )
 
     out = xr.concat(au_lst, dim=f"d{ax_name[0]}").assign_coords(
