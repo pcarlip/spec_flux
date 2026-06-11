@@ -1,4 +1,3 @@
-from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum, StrEnum
 from types import ModuleType
@@ -7,6 +6,7 @@ from typing import Self
 import cupy as cp
 import cupyx
 import numpy as np
+import pandas as pd
 import xarray as xr
 from xarray_extras.interpolate import splev, splrep
 
@@ -311,3 +311,23 @@ def ocean_interp_adv_per(
     )
 
     return xr.merge([uvar, vvar, wvar, uadvvar, vadvvar, wadvvar], compat="no_conflicts")
+
+
+def sf_au_prop_xr(sf_tab: xr.Dataset) -> xr.Dataset:
+    pi_au_x = (-sf_tab.SF_Au_x / 2).rename("x")
+    pi_au_y = (-sf_tab.SF_Au_y / 2).rename("y")
+    pi_au_z = (-sf_tab.SF_Au_z / 2).rename("z")
+    return xr.merge([pi_au_x, pi_au_y, pi_au_z], compat="no_conflicts")  # type: ignore
+
+
+def sf_lll_prop_xr(sf_tab: xr.Dataset) -> xr.Dataset:
+    pi_lll_x = (-sf_tab.SF_LLL_x * 5 / (sf_tab.SF_LLL_x.dr * 4)).rename("x")
+    pi_lll_y = (-sf_tab.SF_LLL_y * 5 / (sf_tab.SF_LLL_y.dr * 4)).rename("y")
+    pi_lll_z = (-sf_tab.SF_LLL_z * 5 / (sf_tab.SF_LLL_z.dr * 4)).rename("z")
+    return xr.merge([pi_lll_x, pi_lll_y, pi_lll_z], compat="no_conflicts")  # type: ignore
+
+
+def sf_prop_pd(sf_tab: xr.Dataset, sf_type: SFType) -> pd.DataFrame:
+    pi = sf_au_prop_xr(sf_tab) if sf_type == SFType.Au else sf_lll_prop_xr(sf_tab)
+    tab_short = pi.to_dataframe().reset_index()
+    return tab_short.melt(id_vars=["time", "dr", "k"], value_name="ε", var_name="axis")
