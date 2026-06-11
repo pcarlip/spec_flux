@@ -45,9 +45,9 @@ def pi_cg_gauss(
     return cp.mean(running_sum).get()
 
 
-def pi_cg_gauss_xr(data: xr.Dataset, k: float) -> float:
+def pi_cg_gauss_xr(data: xr.Dataset, k: float) -> xr.DataArray:
     dx = float(data["x_caa"][1] - data["x_caa"][0])
-    running_sum = cp.zeros_like(data["u"].data)
+    running_sum = xr.DataArray(0.0, {"time": data.time, "k": k})
 
     size = (1 / k) / dx
     vels = (data["u"], data["v"], data["w"])
@@ -65,6 +65,6 @@ def pi_cg_gauss_xr(data: xr.Dataset, k: float) -> float:
             tau_2 = smoothed_vels[i] * smoothed_vels[j]
             tau = tau_1 - tau_2
             grad = vels[i].differentiate(axes[j], 2)
-            running_sum -= (tau * grad).data
+            running_sum -= cp.mean(tau * grad).data.get()
 
-    return cp.mean(running_sum).get()
+    return running_sum
