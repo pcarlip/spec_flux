@@ -1,8 +1,6 @@
 from typing import Literal
 
-import cupy as cp
 import cupy_xarray
-import dask.array as dsar
 import numpy as np
 import xarray as xr
 import xrft
