@@ -1,9 +1,11 @@
 from collections.abc import Callable, Iterable
 
 import numpy as np
+import xarray as xr
 from scipy.integrate import simpson
+from xrscipy.integrate import simpson as xrsimp
 
-from .utils import IntMethod, StrAxis, ndarray, xp_fft
+from .utils import Axis, IntMethod, StrAxis, ndarray, xp_fft
 
 
 def conv_linear(
@@ -69,6 +71,24 @@ def conv_lst(
         Spectral flux at each wavenumber k
     """
     return np.array([conv_linear(k, sf, sf_name, transformation, axis) for k in k_lst])
+
+
+def conv_xr(
+    k: float,
+    sf: xr.DataArray,
+    transformation: Callable[[float, xr.DataArray], np.typing.ArrayLike],
+) -> xr.DataArray:
+    integrand = (transformation(k, sf.dr) * sf).fillna(0.0)
+    return xrsimp(integrand, coord="dr").assign_coords({"k": k})  # type: ignore
+
+
+def conv_lst_xr(
+    k_lst: Iterable[float],
+    sf: xr.DataArray,
+    transformation: Callable[[float, xr.DataArray], np.typing.ArrayLike],
+) -> xr.DataArray:
+    vals = [conv_xr(k, sf, transformation) for k in k_lst]
+    return xr.concat(vals, "k").assign_coords({"k": k_lst})
 
 
 def conv_full(
