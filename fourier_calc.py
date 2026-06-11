@@ -85,8 +85,8 @@ def pi_int_dir_xr(
     """
     vel = (data.w, data.v, data.u)[axis.value]
     adv_realspace = advection_xr(data, axis, method, edge_order=edge_order)
-    vel_hat = np.conj(xrft.fft(vel))
-    adv_spec = xrft.fft(adv_realspace)
+    vel_hat = np.conj(xrft.fft(vel, dim=["x_caa", "y_aca", "z_aac"]))
+    adv_spec = xrft.fft(adv_realspace, dim=["x_caa", "y_aca", "z_aac"])
     return np.conj(adv_spec * vel_hat)  # type: ignore
 
 
@@ -154,9 +154,11 @@ def fourier_prep_xr(
     xr.Dataset
         Dataset with integrand values, k magnitudes
     """
-    pi_int: xr.DataArray = sum(
-        pi_int_dir_xr(data, axis, grad_method, edge_order) for axis in Axis
-    ).rename("pi_int")  # type: ignore
+    pi_int = (
+        pi_int_dir_xr(data, Axis.x, grad_method, edge_order)
+        + pi_int_dir_xr(data, Axis.y, grad_method, edge_order)
+        + pi_int_dir_xr(data, Axis.z, grad_method, edge_order)
+    ).rename("pi_int")
     k = (pi_int.freq_x_caa**2 + pi_int.freq_y_aca**2 + pi_int.freq_z_aac**2).rename("k")
     out = xr.merge([pi_int, k]).assign_attrs({"L": data.x_caa[-1] - data.x_caa[0]})
     if pi_int.cupy.is_cupy:
