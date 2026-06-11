@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+
 import cupy as cp
 import cupy_xarray
 import xarray as xr
@@ -68,3 +70,7 @@ def pi_cg_gauss_xr(data: xr.Dataset, k: float) -> xr.DataArray:
             running_sum -= cp.mean(tau * grad).data.get()
 
     return running_sum
+
+
+def pi_cg_lst_xr(data: xr.Dataset, k_cg: Iterable[float]) -> xr.DataArray:
+    return xr.concat([pi_cg_gauss_xr(data, k) for k in k_cg], "k")
