@@ -1,5 +1,6 @@
 import time
 from collections.abc import Hashable, Iterable, Mapping
+from itertools import product
 
 import cupy as cp
 import cupy_xarray
@@ -190,6 +191,82 @@ def sf_au_dir(
         sf[i] = xp.mean(sf_au_kernel(du, dv, dw, dau, dav, daw))
 
     return (diffs, sf)
+
+
+def sf_au_xr_nd(
+    data: xr.Dataset,
+    spacing: int = 1,
+    offset: int = 0,
+    spacing_lst: Iterable[int] | None = None,
+    spacing_dict: dict[str, Iterable[int]] | None = None,
+    dims: tuple[str, ...] = ("z_aac", "y_aca", "x_caa"),
+    vels: tuple[str, ...] = ("w", "v", "u"),
+) -> xr.DataArray:
+    """Calculate the advective structure function for an xarray dataset, with all
+    combinations of spacings in some range
+
+    Parameters
+    ----------
+    data : xr.Dataset
+        Dataset with velocities u, v, w; dimensions x_caa, y_aca, z_aac
+    spacing : int, optional
+        Use every nth spacing along each axis, if spacing_lst or spacing_dict not given,
+        by default 1
+    offset : int, optional
+        Offset the first spacing by m before starting, if spacing_lst or spacing_dict
+        not given, by default 0
+    spacing_lst : Iterable[int] | None, optional
+        List of (integer) spacings to use along all axes, by default None
+    spacing_dict : dict[str, Iterable[int]] | None, optional
+        Dict of (integer) spacings to use along each distinct axis, keys must match dims
+        by default None
+    dims : tuple[str, ...]
+        List of (spatial) dimension names in the data along which to take SFs,
+        by default ("z_aac","y_aca","x_caa")
+    vels : tuple[str, ...]
+        List of velocity names in the data corresponding to the above dimensions,
+        by default ("w", "v", "u")
+
+    Returns
+    -------
+    xr.DataArray
+        3D data of the structure function at each spacing combination
+    """
+    ndim = len(dims)
+    if spacing_lst is not None:
+        spacing_comb = product(spacing_lst, repeat=ndim)
+    elif spacing_dict is not None:
+        spacing_comb = product(*[(spacing_dict[i]) for i in dims])
+    else:
+        dim_len = [len(data[dim]) for dim in dims]
+        spacing_comb = product(*[range(offset, N, spacing) for N in dim_len])
+    # I'm not convinced the *[] does anything here, but it makes vscode properly
+    # understand the typing
+
+    adv_lst: list[xr.DataArray] = []
+    for i in range(ndim):
+        adv = xr.zeros_like(data[dims[i]])
+        for j in range(ndim):
+            adv += data[vels[j]] * data[vels[i]].differentiate(dims[j])
+        adv_lst.append(adv)
+
+    sf_vals: list[xr.DataArray] = []
+    for inds in spacing_comb:
+        roll: Mapping[Hashable, int] = {dims[i]: -inds[i] for i in range(ndim)}
+        # annotating the type here is also silly, but again necessary for vscode
+        sf_arr = xr.zeros_like(data[dims[0]])
+        for i in range(ndim):
+            du = data[dims[i]].roll(roll) - data[dims[i]]
+            dau = adv_lst[i].roll(roll) - adv_lst[i]
+            sf_arr += du * dau
+        sf_vals.append(
+            sf_arr.mean(dim=dims)
+            .assign_coords({"d" + dims[i]: inds[i] for i in range(ndim)})
+            .rename("SF_Au")
+        )
+
+    out = xr.combine_by_coords(sf_vals)
+    return out if type(out) is xr.DataArray else out.to_dataarray()
 
 
 def sf_au_xr(
