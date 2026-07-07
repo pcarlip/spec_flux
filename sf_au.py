@@ -193,7 +193,7 @@ def sf_au_dir(
     return (diffs, sf)
 
 
-def sf_au_xr_nd(
+def sf_au_nd(
     data: xr.Dataset,
     spacing: int = 1,
     offset: int = 0,
@@ -238,14 +238,16 @@ def sf_au_xr_nd(
     elif spacing_dict is not None:
         spacing_comb = product(*[(spacing_dict[i]) for i in dims])
     else:
-        dim_len = [len(data[dim]) for dim in dims]
+        dim_len = [len(data[dim]) // 2 for dim in dims]
         spacing_comb = product(*[range(offset, N, spacing) for N in dim_len])
     # I'm not convinced the *[] does anything here, but it makes vscode properly
     # understand the typing
 
+    diffs = [data[dim][1] - data[dim][0] for dim in dims]
+
     adv_lst: list[xr.DataArray] = []
     for i in range(ndim):
-        adv = xr.zeros_like(data[dims[i]])
+        adv = xr.zeros_like(data[vels[i]])
         for j in range(ndim):
             adv += data[vels[j]] * data[vels[i]].differentiate(dims[j])
         adv_lst.append(adv)
@@ -254,14 +256,14 @@ def sf_au_xr_nd(
     for inds in spacing_comb:
         roll: Mapping[Hashable, int] = {dims[i]: -inds[i] for i in range(ndim)}
         # annotating the type here is also silly, but again necessary for vscode
-        sf_arr = xr.zeros_like(data[dims[0]])
+        sf_arr = xr.zeros_like(data[vels[0]])
         for i in range(ndim):
-            du = data[dims[i]].roll(roll) - data[dims[i]]
+            du = data[vels[i]].roll(roll) - data[vels[i]]
             dau = adv_lst[i].roll(roll) - adv_lst[i]
             sf_arr += du * dau
         sf_vals.append(
             sf_arr.mean(dim=dims)
-            .assign_coords({"d" + dims[i]: inds[i] for i in range(ndim)})
+            .expand_dims({"d" + dims[i]: [diffs[i] * inds[i]] for i in range(ndim)})
             .rename("SF_Au")
         )
 
@@ -350,7 +352,7 @@ def sf_au_xr(
                 au_lst.append(
                     (du * dau + dv * dav + dw * daw)
                     .mean(["z_aac", "y_aca", "x_caa"])
-                    .expand_dims(dz=[dzi], dy=[dyj], dx=[dxk])
+                    .expand_dims(dz_aac=[dzi], dy_aca=[dyj], dx_caa=[dxk])
                     .rename("SF_Au")
                 )
 
