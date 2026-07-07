@@ -212,7 +212,7 @@ def sf_au_nd(
     Parameters
     ----------
     data : xr.Dataset
-        Dataset with velocities u, v, w; dimensions x_caa, y_aca, z_aac
+        Dataset with velocities and axes
     spacing : int, optional
         Use every nth spacing along each axis, if spacing_lst or spacing_dict not given,
         by default 1
