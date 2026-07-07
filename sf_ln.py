@@ -175,7 +175,8 @@ def sf_ln_nd(
         r = np.sqrt(sum([ind**2 for ind in inds]))
         for i in range(ndim):
             du = data[vels[i]].roll(roll) - data[vels[i]]
-            sf_arr += du * inds[i] / r
+            if r != 0:
+                sf_arr += du * inds[i] / r
         sf_vals.append(
             (sf_arr**order)
             .mean(dim=dims)
