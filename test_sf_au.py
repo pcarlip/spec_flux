@@ -7,7 +7,7 @@ import numpy as np
 import xarray as xr
 
 sys.path.append("..")
-from numerics.sf_au import Axis, sf_au, sf_au_dir, sf_au_dir_xr, sf_au_xr, sf_au_nd
+from numerics.sf_au import Axis, sf_au, sf_au_dir, sf_au_dir_xr, sf_au_nd, sf_au_xr
 
 
 def test_minimal() -> None:
