@@ -42,6 +42,7 @@ def sf_au(
     y: ndarray,
     z: ndarray,
     spectral: bool = False,
+    debug_print: bool = False,
 ) -> tuple[tuple[ndarray, ndarray, ndarray], ndarray]:
     """Calculate the advective structure function on 3d velocity data
     Use all sets of separations, assume periodic data, accepts numpy or cupy arrays
@@ -65,6 +66,9 @@ def sf_au(
         Whether to use spectral calculation of gradients, by default False
         Note: the spectral case is not directly tested, but differs only in the
         calculation of gradients, which is tested
+    debug_print : bool, optional
+        Whether to print messages every 25th iteration of the outer loop to monitor
+        progress, by default False
 
     Returns
     -------
@@ -96,7 +100,7 @@ def sf_au(
     wadv = advection(data, Axis.z, spacings, ranges, grad_method)
 
     for i in range(L):
-        if i % 25 == 0:
+        if i % 25 == 0 and debug_print:
             print(i, flush=True)
             print(time.ctime(), flush=True)
         for j in range(M):

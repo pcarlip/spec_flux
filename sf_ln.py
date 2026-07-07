@@ -47,6 +47,7 @@ def sf_ln(
     y: ndarray,
     z: ndarray,
     order: int = 3,
+    debug_print: bool = False,
 ) -> tuple[tuple[ndarray, ndarray, ndarray], ndarray]:
     """Calculate a longitudinal structure function of an arbitrary order on 3d velocities
     Use all sets of separations, assume periodic data, accepts numpy or cupy arrays
@@ -68,6 +69,9 @@ def sf_ln(
     order : int, optional
         power of the velocity differences (e.g. use SF_LL or LLL)
         Default value is 3 (LLL)
+        debug_print : bool, optional
+        Whether to print messages every 25th iteration of the outer loop to monitor
+        progress, by default False
 
     Returns
     -------
@@ -91,7 +95,7 @@ def sf_ln(
     diffs = (dz, dy, dx)
 
     for i in range(L):
-        if i % 25 == 0:
+        if i % 25 == 0 and debug_print:
             print(i, flush=True)
             print(time.ctime(), flush=True)
         for j in range(M):
