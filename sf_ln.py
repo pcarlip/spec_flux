@@ -1,5 +1,5 @@
 import time
-from collections.abc import Hashable, Collection, Mapping
+from collections.abc import Collection, Hashable, Mapping
 from itertools import product
 
 import cupy as cp
@@ -357,24 +357,25 @@ def sf_ln_xr(
     dz = [z[i] - z[0] for i in zind]
 
     # ln_lst = []
+    xp = cp.get_array_module(data["u"].data)
     out = xr.DataArray(
-        np.zeros((len(zind), len(yind), len(xind))),
+        xp.zeros((len(zind), len(yind), len(xind))),
         [("dz_aac", dz), ("dy_aca", dy), ("dx_caa", dx)],
         name=f"SF_{'L' * order}",
     )
 
-    for i in zind:
+    for ni, i in enumerate(zind):
         if i % 5 == 0 and debug_print:
             print(i)
-        for j in yind:
-            for k in xind:
+        for nj, j in enumerate(yind):
+            for nk, k in enumerate(xind):
                 if not (i == 0 and j == 0 and k == 0):
                     roll: Mapping[Hashable, int] = {"z_aac": -i, "y_aca": -j, "x_caa": -k}
                     du = data["u"].roll(roll).data - data["u"].data
                     dv = data["v"].roll(roll).data - data["v"].data
                     dw = data["w"].roll(roll).data - data["w"].data
                     r = np.sqrt(i**2 + j**2 + k**2)
-                    out[i, j, k] = np.mean(sf_kernel(du, dv, dw, i, j, k, r, order))
+                    out[ni, nj, nk] = xp.mean(sf_kernel(du, dv, dw, i, j, k, r, order))
     return out
 
 
