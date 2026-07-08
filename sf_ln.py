@@ -365,11 +365,11 @@ def sf_ln_xr(
             for k, dxk in zip(xind, dx, strict=True):
                 if not (i == 0 and j == 0 and k == 0):
                     roll: Mapping[Hashable, int] = {"z_aac": -i, "y_aca": -j, "x_caa": -k}
-                    du = data["u"].roll(roll) - data["u"]
-                    dv = data["v"].roll(roll) - data["v"]
-                    dw = data["w"].roll(roll) - data["w"]
+                    du = data["u"].roll(roll).data - data["u"].data
+                    dv = data["v"].roll(roll).data - data["v"].data
+                    dw = data["w"].roll(roll).data - data["w"].data
                     r = np.sqrt(i**2 + j**2 + k**2)
-                    du_l_arr = sf_kernel(du.data, dv.data, dw.data, i, j, k, r, order)
+                    du_l_arr = sf_kernel(du, dv, dw, i, j, k, r, order)
                     du_l = xr.DataArray(np.mean(du_l_arr))
                 else:
                     du_l = xr.DataArray(0)
