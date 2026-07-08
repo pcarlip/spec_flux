@@ -206,7 +206,7 @@ def test_xr_comp() -> None:
         coords={"z_aac": z, "y_aca": y, "x_caa": x},
     )
 
-    np.testing.assert_allclose(sf_ln_xr(ds, 2).data[0], sf_ln(u, v, w, x, y, z, 2)[1])
+    np.testing.assert_allclose(sf_ln_xr(ds, 2).data, sf_ln(u, v, w, x, y, z, 2)[1])
 
 
 def test_nd_comp() -> None:
@@ -225,4 +225,4 @@ def test_nd_comp() -> None:
         coords={"z_aac": z, "y_aca": y, "x_caa": x},
     )
 
-    np.testing.assert_allclose(sf_ln_nd(ds, 2).data, sf_ln_xr(ds, 2).data)
+    np.testing.assert_allclose(sf_ln_nd(ds, 2).data[0], sf_ln_xr(ds, 2).data)
