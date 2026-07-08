@@ -1,5 +1,5 @@
 import time
-from collections.abc import Hashable, Iterable, Mapping
+from collections.abc import Hashable, Collection, Mapping
 from itertools import product
 
 import cupy as cp
@@ -116,8 +116,8 @@ def sf_ln_nd(
     order: int = 3,
     spacing: int = 1,
     offset: int = 0,
-    spacing_lst: Iterable[int] | None = None,
-    spacing_dict: dict[str, Iterable[int]] | None = None,
+    spacing_lst: Collection[int] | None = None,
+    spacing_dict: dict[str, Collection[int]] | None = None,
     dims: tuple[str, ...] = ("z_aac", "y_aca", "x_caa"),
     vels: tuple[str, ...] = ("w", "v", "u"),
 ) -> xr.DataArray:
@@ -137,9 +137,9 @@ def sf_ln_nd(
     offset : int, optional
         Offset the first spacing by m before starting, if spacing_lst or spacing_dict
         not given, by default 0
-    spacing_lst : Iterable[int] | None, optional
+    spacing_lst : Collection[int] | None, optional
         List of (integer) spacings to use along all axes, by default None
-    spacing_dict : dict[str, Iterable[int]] | None, optional
+    spacing_dict : dict[str, Collection[int]] | None, optional
         Dict of (integer) spacings to use along each distinct axis, keys must match dims
         by default None
     dims : tuple[str, ...]
@@ -302,8 +302,8 @@ def sf_ln_xr(
     order: int = 3,
     spacing: int = 1,
     offset: int = 0,
-    spacing_lst: Iterable[int] | None = None,
-    spacing_dict: dict[str, Iterable[int]] | None = None,
+    spacing_lst: Collection[int] | None = None,
+    spacing_dict: dict[str, Collection[int]] | None = None,
     debug_print: bool = False,
 ) -> xr.DataArray:
     """Calculate the advective structure function for an xarray dataset, with all
@@ -321,9 +321,9 @@ def sf_ln_xr(
     offset : int, optional
         Offset the first spacing by m before starting, if spacing_lst or spacing_dict
         not given, by default 0
-    spacing_lst : Iterable[int] | None, optional
+    spacing_lst : Collection[int] | None, optional
         List of (integer) spacings to use along all axes, by default None
-    spacing_dict : dict[str, Iterable[int]] | None, optional
+    spacing_dict : dict[str, Collection[int]] | None, optional
         Dict of (integer) spacings to use along each distinct axis, with keys x,y,z,
         by default None
 
@@ -356,33 +356,26 @@ def sf_ln_xr(
     dy = [y[i] - y[0] for i in yind]
     dz = [z[i] - z[0] for i in zind]
 
-    ln_lst = []
-    np = cp.get_array_module(data["u"].data)
+    # ln_lst = []
+    out = xr.DataArray(
+        np.zeros((len(zind), len(yind), len(xind))),
+        [("dz_aac", dz), ("dy_aca", dy), ("dx_caa", dx)],
+        name=f"SF_{'L' * order}",
+    )
 
-    for i, dzi in zip(zind, dz, strict=True):
+    for i in zind:
         if i % 5 == 0 and debug_print:
             print(i)
-        for j, dyj in zip(yind, dy, strict=True):
-            for k, dxk in zip(xind, dx, strict=True):
+        for j in yind:
+            for k in xind:
                 if not (i == 0 and j == 0 and k == 0):
-                    # roll: Mapping[Hashable, int] = {"z_aac": -i, "y_aca": -j, "x_caa": -k}
-                    du = np.roll(data["u"].data, (i, j, k), (0, 1, 2)) - data["u"].data
-                    dv = np.roll(data["v"].data, (i, j, k), (0, 1, 2)) - data["v"].data
-                    dw = np.roll(data["w"].data, (i, j, k), (0, 1, 2)) - data["w"].data
+                    roll: Mapping[Hashable, int] = {"z_aac": -i, "y_aca": -j, "x_caa": -k}
+                    du = data["u"].roll(roll).data - data["u"].data
+                    dv = data["v"].roll(roll).data - data["v"].data
+                    dw = data["w"].roll(roll).data - data["w"].data
                     r = np.sqrt(i**2 + j**2 + k**2)
-                    du_l_arr = sf_kernel(du, dv, dw, i, j, k, r, order)
-                    du_l = xr.DataArray(np.mean(du_l_arr))
-                else:
-                    du_l = xr.DataArray(0)
-                    if data.cupy.is_cupy:
-                        du_l = du_l.as_cupy()
-                ln_lst.append(
-                    du_l.expand_dims(dz=[dzi], dy=[dyj], dx=[dxk]).rename(
-                        f"SF_{'L' * order}"
-                    )
-                )
-    out = xr.combine_by_coords(ln_lst, compat="no_conflicts")
-    return out if type(out) is xr.DataArray else out.to_dataarray()
+                    out[i, j, k] = np.mean(sf_kernel(du, dv, dw, i, j, k, r, order))
+    return out
 
 
 def sf_ln_numba(
