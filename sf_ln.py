@@ -358,11 +358,7 @@ def sf_ln_xr(
 
     # ln_lst = []
     xp = cp.get_array_module(data["u"].data)
-    out = xr.DataArray(
-        xp.zeros((len(zind), len(yind), len(xind))),
-        [("dz_aac", dz), ("dy_aca", dy), ("dx_caa", dx)],
-        name=f"SF_{'L' * order}",
-    )
+    out = xp.zeros((len(zind), len(yind), len(xind)))
 
     for ni, i in enumerate(zind):
         if i % 5 == 0 and debug_print:
@@ -375,10 +371,13 @@ def sf_ln_xr(
                     dv = data["v"].roll(roll).data - data["v"].data
                     dw = data["w"].roll(roll).data - data["w"].data
                     r = np.sqrt(i**2 + j**2 + k**2)
-                    out.data[ni, nj, nk] = xp.mean(
-                        sf_kernel(du, dv, dw, i, j, k, r, order)
-                    )
-    return out
+                    out[ni, nj, nk] = xp.mean(sf_kernel(du, dv, dw, i, j, k, r, order))
+
+    return xr.DataArray(
+        out,
+        [("dz_aac", dz), ("dy_aca", dy), ("dx_caa", dx)],
+        name=f"SF_{'L' * order}",
+    )
 
 
 def sf_ln_numba(
