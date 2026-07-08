@@ -357,6 +357,7 @@ def sf_ln_xr(
     dz = [z[i] - z[0] for i in zind]
 
     ln_lst = []
+    np = cp.get_array_module(data["u"].data)
 
     for i, dzi in zip(zind, dz, strict=True):
         if i % 5 == 0 and debug_print:
@@ -364,10 +365,10 @@ def sf_ln_xr(
         for j, dyj in zip(yind, dy, strict=True):
             for k, dxk in zip(xind, dx, strict=True):
                 if not (i == 0 and j == 0 and k == 0):
-                    roll: Mapping[Hashable, int] = {"z_aac": -i, "y_aca": -j, "x_caa": -k}
-                    du = data["u"].roll(roll) - data["u"].data
-                    dv = data["v"].roll(roll) - data["v"].data
-                    dw = data["w"].roll(roll) - data["w"].data
+                    # roll: Mapping[Hashable, int] = {"z_aac": -i, "y_aca": -j, "x_caa": -k}
+                    du = np.roll(data["u"].data, (i, j, k), (0, 1, 2)) - data["u"].data
+                    dv = np.roll(data["v"].data, (i, j, k), (0, 1, 2)) - data["v"].data
+                    dw = np.roll(data["w"].data, (i, j, k), (0, 1, 2)) - data["w"].data
                     r = np.sqrt(i**2 + j**2 + k**2)
                     du_l_arr = sf_kernel(du, dv, dw, i, j, k, r, order)
                     du_l = xr.DataArray(np.mean(du_l_arr))
