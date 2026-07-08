@@ -375,7 +375,9 @@ def sf_ln_xr(
                     dv = data["v"].roll(roll).data - data["v"].data
                     dw = data["w"].roll(roll).data - data["w"].data
                     r = np.sqrt(i**2 + j**2 + k**2)
-                    out[ni, nj, nk] = xp.mean(sf_kernel(du, dv, dw, i, j, k, r, order))
+                    out.data[ni, nj, nk] = xp.mean(
+                        sf_kernel(du, dv, dw, i, j, k, r, order)
+                    )
     return out
 
 
