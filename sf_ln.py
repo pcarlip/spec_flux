@@ -369,8 +369,8 @@ def sf_ln_xr(
                     dv = data["v"].roll(roll) - data["v"]
                     dw = data["w"].roll(roll) - data["w"]
                     r = np.sqrt(i**2 + j**2 + k**2)
-                    du_l_arr = ((du * k + dv * j + dw * i) / r) ** order
-                    du_l = xr.DataArray(np.mean(du_l_arr.data))
+                    du_l_arr = ((du.data * k + dv.data * j + dw.data * i) / r) ** order
+                    du_l = xr.DataArray(np.mean(du_l_arr))
                 else:
                     du_l = xr.DataArray(0)
                     if data.cupy.is_cupy:
