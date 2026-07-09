@@ -156,36 +156,37 @@ def sf_ln_nd(
     """
     ndim = len(dims)
     if spacing_lst is not None:
-        spacing_comb = product(spacing_lst, repeat=ndim)
+        spacing_lsts = [spacing_lst] * ndim
     elif spacing_dict is not None:
-        spacing_comb = product(*[(spacing_dict[i]) for i in dims])
+        spacing_lsts = [(spacing_dict[i]) for i in dims]
     else:
-        dim_len = [len(data[dim]) // 2 for dim in dims]
-        spacing_comb = product(*[range(offset, N, spacing) for N in dim_len])
-    # I'm not convinced the *[] does anything here, but it makes vscode properly
-    # understand the typing
+        dim_len = [len(data[dim]) for dim in dims]
+        spacing_lsts = [range(offset, N // 2, spacing) for N in dim_len]
+    spacing_comb = product(*spacing_lsts)
+    spacing_enum = product(*[range(len(i)) for i in spacing_lsts])
+    # I'm not sure what the *[] does here, but it's apparently necessary
 
-    diffs = [data[dim][1] - data[dim][0] for dim in dims]
+    diffs = [data[dims[i]][spacing_lsts[i]] - data[dims[i]][0] for i in range(ndim)]
 
-    sf_vals: list[xr.DataArray] = []
-    for inds in spacing_comb:
-        roll: Mapping[Hashable, int] = {dims[i]: -inds[i] for i in range(ndim)}
-        # annotating the type here is also silly, but again necessary for vscode
-        sf_arr = xr.zeros_like(data[vels[0]])
+    vel_data = [data[vel].transpose(*dims).data for vel in vels]
+
+    xp = cp.get_array_module(vel_data[0])
+    out = xp.zeros([len(i) for i in spacing_lsts])
+
+    for inds, ninds in zip(spacing_comb, spacing_enum, strict=True):
+        sf_arr = xp.zeros_like(vel_data[0])
         r = np.sqrt(sum([ind**2 for ind in inds]))
-        for i in range(ndim):
-            du = data[vels[i]].roll(roll) - data[vels[i]]
-            if r != 0:
+        if r != 0:
+            for i in range(ndim):
+                du = vel_data[i] - xp.roll(vel_data[i], inds, range(ndim))
                 sf_arr += du * inds[i] / r
-        sf_vals.append(
-            (sf_arr**order)
-            .mean(dim=dims)
-            .expand_dims({"d" + dims[i]: [diffs[i] * inds[i]] for i in range(ndim)})
-            .rename("SF_Au")
-        )
+            out[ninds] = xp.mean(sf_arr**order)  # type: ignore
 
-    out = xr.combine_by_coords(sf_vals)
-    return out if type(out) is xr.DataArray else out.to_dataarray()
+    return xr.DataArray(
+        out,
+        [("d" + dims[i], diffs[i].data) for i in range(ndim)],
+        name=f"SF_{'L' * order}",
+    )
 
 
 def sf_ln_dir(
