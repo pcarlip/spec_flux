@@ -235,4 +235,4 @@ def test_nd_comp() -> None:
         coords={"z_aac": z, "y_aca": y, "x_caa": x},
     )
 
-    np.testing.assert_allclose(sf_au_nd(ds).data, sf_au_xr(ds).data)
+    np.testing.assert_allclose(sf_au_nd(ds).data, sf_au_xr(ds).data[0])
