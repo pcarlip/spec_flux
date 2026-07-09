@@ -1,5 +1,5 @@
 import time
-from collections.abc import Hashable, Iterable, Mapping
+from collections.abc import Hashable, Collection, Mapping
 from itertools import product
 
 import cupy as cp
@@ -201,8 +201,8 @@ def sf_au_nd(
     data: xr.Dataset,
     spacing: int = 1,
     offset: int = 0,
-    spacing_lst: Iterable[int] | None = None,
-    spacing_dict: dict[str, Iterable[int]] | None = None,
+    spacing_lst: Collection[int] | None = None,
+    spacing_dict: dict[str, Collection[int]] | None = None,
     dims: tuple[str, ...] = ("z_aac", "y_aca", "x_caa"),
     vels: tuple[str, ...] = ("w", "v", "u"),
 ) -> xr.DataArray:
@@ -219,9 +219,9 @@ def sf_au_nd(
     offset : int, optional
         Offset the first spacing by m before starting, if spacing_lst or spacing_dict
         not given, by default 0
-    spacing_lst : Iterable[int] | None, optional
+    spacing_lst : Collection[int] | None, optional
         List of (integer) spacings to use along all axes, by default None
-    spacing_dict : dict[str, Iterable[int]] | None, optional
+    spacing_dict : dict[str, Collection[int]] | None, optional
         Dict of (integer) spacings to use along each distinct axis, keys must match dims
         by default None
     dims : tuple[str, ...]
@@ -238,16 +238,17 @@ def sf_au_nd(
     """
     ndim = len(dims)
     if spacing_lst is not None:
-        spacing_comb = product(spacing_lst, repeat=ndim)
+        spacing_lsts = [spacing_lst] * ndim
     elif spacing_dict is not None:
-        spacing_comb = product(*[(spacing_dict[i]) for i in dims])
+        spacing_lsts = [(spacing_dict[i]) for i in dims]
     else:
-        dim_len = [len(data[dim]) // 2 for dim in dims]
-        spacing_comb = product(*[range(offset, N, spacing) for N in dim_len])
-    # I'm not convinced the *[] does anything here, but it makes vscode properly
-    # understand the typing
+        dim_len = [len(data[dim]) for dim in dims]
+        spacing_lsts = [range(offset, N // 2, spacing) for N in dim_len]
+    spacing_comb = product(*spacing_lsts)
+    spacing_enum = product(*[range(len(i)) for i in spacing_lsts])
+    # I'm not sure what the *[] does here, but it's apparently necessary
 
-    diffs = [data[dim][1] - data[dim][0] for dim in dims]
+    diffs = [data[dims[i]][spacing_lsts[i]] - data[dims[i]][0] for i in range(ndim)]
 
     adv_lst: list[xr.DataArray] = []
     for i in range(ndim):
@@ -256,23 +257,25 @@ def sf_au_nd(
             adv += data[vels[j]] * data[vels[i]].differentiate(dims[j])
         adv_lst.append(adv)
 
-    sf_vals: list[xr.DataArray] = []
-    for inds in spacing_comb:
-        roll: Mapping[Hashable, int] = {dims[i]: -inds[i] for i in range(ndim)}
-        # annotating the type here is also silly, but again necessary for vscode
-        sf_arr = xr.zeros_like(data[vels[0]])
-        for i in range(ndim):
-            du = data[vels[i]].roll(roll) - data[vels[i]]
-            dau = adv_lst[i].roll(roll) - adv_lst[i]
-            sf_arr += du * dau
-        sf_vals.append(
-            sf_arr.mean(dim=dims)
-            .expand_dims({"d" + dims[i]: [diffs[i] * inds[i]] for i in range(ndim)})
-            .rename("SF_Au")
-        )
+    vel_data = [data[vel].transpose(*dims).data for vel in vels]
+    adv_data = [adv_lst[i].transpose(*dims).data for i in range(ndim)]
 
-    out = xr.combine_by_coords(sf_vals)
-    return out if type(out) is xr.DataArray else out.to_dataarray()
+    xp = cp.get_array_module(vel_data[0])
+    out = xp.zeros([len(i) for i in spacing_lsts])
+
+    for inds, ninds in zip(spacing_comb, spacing_enum, strict=True):
+        sf_arr = xp.zeros_like(vel_data[0])
+        for i in range(ndim):
+            du = vel_data[i] - xp.roll(vel_data[i], inds, range(ndim))
+            dau = adv_data[i] - xp.roll(adv_data[i], inds, range(ndim))
+            sf_arr += du * dau
+        out[ninds] = xp.mean(sf_arr)
+
+    return xr.DataArray(
+        out,
+        [("d" + dims[i], diffs[i].data) for i in range(ndim)],
+        name="SF_Au",
+    )
 
 
 def sf_au_xr(
@@ -280,8 +283,8 @@ def sf_au_xr(
     spectral: bool = False,
     spacing: int = 1,
     offset: int = 0,
-    spacing_lst: Iterable[int] | None = None,
-    spacing_dict: dict[str, Iterable[int]] | None = None,
+    spacing_lst: Collection[int] | None = None,
+    spacing_dict: dict[str, Collection[int]] | None = None,
     debug_print: bool = False,
 ) -> xr.DataArray:
     """Calculate the advective structure function for an xarray dataset, with all
@@ -299,9 +302,9 @@ def sf_au_xr(
     offset : int, optional
         Offset the first spacing by m before starting, if spacing_lst or spacing_dict
         not given, by default 0
-    spacing_lst : Iterable[int] | None, optional
+    spacing_lst : Collection[int] | None, optional
         List of (integer) spacings to use along all axes, by default None
-    spacing_dict : dict[str, Iterable[int]] | None, optional
+    spacing_dict : dict[str, Collection[int]] | None, optional
         Dict of (integer) spacings to use along each distinct axis, with keys x,y,z,
         by default None
 
