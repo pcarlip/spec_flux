@@ -338,33 +338,35 @@ def sf_au_xr(
     dz = [z[i] - z[0] for i in zind]
 
     grad_method = GradMethod.spectral if spectral else GradMethod.numpy
-    uadv = advection_xr(data, Axis.x, grad_method)
-    vadv = advection_xr(data, Axis.y, grad_method)
-    wadv = advection_xr(data, Axis.z, grad_method)
+    uadv = advection_xr(data, Axis.x, grad_method).data
+    vadv = advection_xr(data, Axis.y, grad_method).data
+    wadv = advection_xr(data, Axis.z, grad_method).data
 
-    au_lst = []
+    xp = cp.get_array_module(data["u"].data)
+    out = xp.zeros((len(zind), len(yind), len(xind)))
 
-    for i, dzi in zip(zind, dz, strict=True):
+    u = data["u"].data
+    v = data["v"].data
+    w = data["w"].data
+
+    for ni, i in enumerate(zind):
         if i % 5 == 0 and debug_print:
             print(i)
-        for j, dyj in zip(yind, dy, strict=True):
-            for k, dxk in zip(xind, dx, strict=True):
-                roll: Mapping[Hashable, int] = {"z_aac": -i, "y_aca": -j, "x_caa": -k}
-                du = data["u"].roll(roll) - data["u"]
-                dv = data["v"].roll(roll) - data["v"]
-                dw = data["w"].roll(roll) - data["w"]
-                dau = uadv.roll(roll) - uadv
-                dav = vadv.roll(roll) - vadv
-                daw = wadv.roll(roll) - wadv
-                au_lst.append(
-                    (du * dau + dv * dav + dw * daw)
-                    .mean(["z_aac", "y_aca", "x_caa"])
-                    .expand_dims(dz_aac=[dzi], dy_aca=[dyj], dx_caa=[dxk])
-                    .rename("SF_Au")
-                )
+        for nj, j in enumerate(yind):
+            for nk, k in enumerate(xind):
+                du = xp.roll(u, (-i, -j, -k), axis=(0, 1, 2)) - u
+                dv = xp.roll(v, (-i, -j, -k), axis=(0, 1, 2)) - v
+                dw = xp.roll(w, (-i, -j, -k), axis=(0, 1, 2)) - w
+                dau = xp.roll(uadv, (-i, -j, -k), axis=(0, 1, 2)) - uadv
+                dav = xp.roll(vadv, (-i, -j, -k), axis=(0, 1, 2)) - vadv
+                daw = xp.roll(wadv, (-i, -j, -k), axis=(0, 1, 2)) - wadv
+                out[ni, nj, nk] = xp.mean(sf_au_kernel(du, dv, dw, dau, dav, daw))
 
-    out = xr.combine_by_coords(au_lst)
-    return out if type(out) is xr.DataArray else out.to_dataarray()
+    return xr.DataArray(
+        out,
+        [("dz_aac", dz), ("dy_aca", dy), ("dx_caa", dx)],
+        name="SF_Au",
+    )
 
 
 def sf_au_dir_xr(data: xr.Dataset, axis: Axis, spectral: bool = False) -> xr.DataArray:
