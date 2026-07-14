@@ -328,6 +328,20 @@ def sf_lll_prop_xr(sf_tab: xr.Dataset) -> xr.Dataset:
 
 
 def sf_prop_pd(sf_tab: xr.Dataset, sf_type: SFType) -> pd.DataFrame:
+    """Turn a structure function dataset into a dataframe suitable for plotting with sns
+
+    Parameters
+    ----------
+    sf_tab : xr.Dataset
+        Dataset of SF values
+    sf_type : SFType
+        Type of SF (Au or LLL, used for proportionality relations to get spectral flux)
+
+    Returns
+    -------
+    pd.DataFrame
+        Long df with estimated spectral flux vs separation
+    """
     pi = sf_au_prop_xr(sf_tab) if sf_type == SFType.Au else sf_lll_prop_xr(sf_tab)
     tab_short = pi.to_dataframe().reset_index()
     return tab_short.melt(id_vars=["time", "dr", "k"], value_name="ε", var_name="axis")
