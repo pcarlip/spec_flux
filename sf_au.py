@@ -1,5 +1,5 @@
 import time
-from collections.abc import Hashable, Collection, Mapping
+from collections.abc import Collection, Hashable, Mapping
 from itertools import product
 
 import cupy as cp
@@ -43,6 +43,7 @@ def sf_au(
     z: ndarray,
     spectral: bool = False,
     debug_print: bool = False,
+    spacing_lst: Collection[int] | None = None,
 ) -> tuple[tuple[ndarray, ndarray, ndarray], ndarray]:
     """Calculate the advective structure function on 3d velocity data
     Use all sets of separations, assume periodic data, accepts numpy or cupy arrays
@@ -79,15 +80,23 @@ def sf_au(
     """
     xp, _ = xp_fft(u)
 
-    L = len(z) // 2
-    M = len(y) // 2
-    N = len(x) // 2
+    if spacing_lst is not None:
+        xind = spacing_lst
+        yind = spacing_lst
+        zind = spacing_lst
+    else:
+        Nx = len(x) // 2
+        Ny = len(y) // 2
+        Nz = len(z) // 2
+        xind = range(Nx)
+        yind = range(Ny)
+        zind = range(Nz)
 
-    sf = np.zeros((L, M, N), like=u)
+    dx = [x[i] - x[0] for i in xind]
+    dy = [y[i] - y[0] for i in yind]
+    dz = [z[i] - z[0] for i in zind]
 
-    dz = z[:L] - z[0]
-    dy = y[:M] - y[0]
-    dx = x[:N] - x[0]
+    sf = xp.zeros((len(zind), len(yind), len(xind)))
 
     diffs = (dx, dy, dz)
 
@@ -99,12 +108,11 @@ def sf_au(
     vadv = advection(data, Axis.y, spacings, ranges, grad_method)
     wadv = advection(data, Axis.z, spacings, ranges, grad_method)
 
-    for i in range(L):
-        if i % 25 == 0 and debug_print:
+    for ni, i in enumerate(zind):
+        if i % 5 == 0 and debug_print:
             print(i, flush=True)
-            print(time.ctime(), flush=True)
-        for j in range(M):
-            for k in range(N):
+        for nj, j in enumerate(yind):
+            for nk, k in enumerate(xind):
                 if not (i == 0 and j == 0 and k == 0):
                     du = xp.roll(u, shift=(-i, -j, -k), axis=(0, 1, 2)) - u
                     dv = xp.roll(v, shift=(-i, -j, -k), axis=(0, 1, 2)) - v
@@ -112,7 +120,7 @@ def sf_au(
                     dau = xp.roll(uadv, shift=(-i, -j, -k), axis=(0, 1, 2)) - uadv
                     dav = xp.roll(vadv, shift=(-i, -j, -k), axis=(0, 1, 2)) - vadv
                     daw = xp.roll(wadv, shift=(-i, -j, -k), axis=(0, 1, 2)) - wadv
-                    sf[i, j, k] = xp.mean(sf_au_kernel(du, dv, dw, dau, dav, daw))
+                    sf[ni, nj, nk] = xp.mean(sf_au_kernel(du, dv, dw, dau, dav, daw))
 
     return (diffs, sf)
 
