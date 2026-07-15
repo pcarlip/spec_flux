@@ -136,7 +136,8 @@ def conv_full_xr(
     transformation: Callable[[float, xr.DataArray], np.typing.ArrayLike],
     axes: Iterable[str] = ("dz_aac", "dy_aca", "dx_caa"),
 ) -> xr.DataArray:
-    integrand = (transformation(k, sf.dr) * sf).fillna(0.0)
+    dr: xr.DataArray = np.sqrt(sum([sf[ax] ** 2 for ax in axes]))  # type: ignore
+    integrand = (transformation(k, dr) * sf).fillna(0.0)
     out = integrand
     for ax in axes:
         out = xrsimp(out, coord=ax)  # type: ignore
@@ -183,3 +184,19 @@ def conv_lst_full_xr(
     axes: Iterable[str] = ("dz_aac", "dy_aca", "dx_caa"),
 ) -> xr.DataArray:
     return xr.concat([conv_full_xr(k, sf, transformation, axes) for k in k_lst], "k")
+
+
+def au_full_trans(k: float, r: ndarray | xr.DataArray) -> np.typing.ArrayLike:
+    return (np.sin(k * r) - k * r * np.cos(k * r)) / (4 * (np.pi**2) * r**3)
+
+
+def lll_full_trans(k: float, r: ndarray | xr.DataArray) -> np.typing.ArrayLike:
+    return 5 * (np.sin(k * r) - k * r * np.cos(k * r)) / (8 * (np.pi**2) * r**4)
+
+
+def au_ax_trans(k: float, r: ndarray | xr.DataArray) -> np.typing.ArrayLike:
+    return (np.sin(k * r) - k * r * np.cos(k * r)) / (np.pi * r)
+
+
+def lll_ax_trans(k: float, r: ndarray | xr.DataArray) -> np.typing.ArrayLike:
+    return (np.sin(k * r) - k * r * np.cos(k * r)) * 5 / (2 * np.pi * r**2)
