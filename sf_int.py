@@ -136,11 +136,11 @@ def conv_full_xr(
     transformation: Callable[[float, xr.DataArray], np.typing.ArrayLike],
     axes: Iterable[str] = ("dz_aac", "dy_aca", "dx_caa"),
 ) -> xr.DataArray:
-    dr: xr.DataArray = np.sqrt(sum([sf[ax] ** 2 for ax in axes]))  # type: ignore
-    integrand = (transformation(k, dr) * sf).fillna(0.0)
+    dr: xr.DataArray = np.sqrt(sum([sf[ax] ** 2 for ax in axes])).cupy.as_cupy()  # type: ignore
+    integrand = (transformation(k, dr) * sf.cupy.as_cupy()).fillna(0.0)
     out = integrand
     for ax in axes:
-        out = xrsimp(out, coord=ax)  # type: ignore
+        out = xrsimp(out.as_numpy(), coord=ax)  # type: ignore
     return out.assign_coords({"k": k})  # type: ignore
 
 
