@@ -1,4 +1,4 @@
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Collection, Iterable
 
 import numpy as np
 import xarray as xr
@@ -130,6 +130,19 @@ def conv_full(
         return simpson(simpson(simpson(integrand, dx=dx), dx=dy), dx=dz)  # type: ignore
 
 
+def conv_full_xr(
+    k: float,
+    sf: xr.DataArray,
+    transformation: Callable[[float, xr.DataArray], np.typing.ArrayLike],
+    axes: Iterable[str] = ("dz_aac", "dy_aca", "dx_caa"),
+) -> xr.DataArray:
+    integrand = (transformation(k, sf.dr) * sf).fillna(0.0)
+    out = integrand
+    for ax in axes:
+        out = xrsimp(out, coord=ax)  # type: ignore
+    return out.assign_coords({"k": k})  # type: ignore
+
+
 def conv_lst_full(
     k_lst: Iterable,
     diffs: tuple[ndarray, ndarray, ndarray],
@@ -161,3 +174,12 @@ def conv_lst_full(
     return np.array(
         [conv_full(k, diffs, sf, transformation, taper, int_method) for k in k_lst]
     )
+
+
+def conv_lst_full_xr(
+    k_lst: Iterable,
+    sf: xr.DataArray,
+    transformation: Callable[[float, xr.DataArray], np.typing.ArrayLike],
+    axes: Iterable[str] = ("dz_aac", "dy_aca", "dx_caa"),
+) -> xr.DataArray:
+    return xr.concat([conv_full_xr(k, sf, transformation, axes) for k in k_lst], "k")
