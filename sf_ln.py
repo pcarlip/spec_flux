@@ -371,7 +371,6 @@ def sf_ln_xr(
         for nj, j in enumerate(yind):
             for nk, k in enumerate(xind):
                 if not (i == 0 and j == 0 and k == 0):
-                    # roll: Mapping[Hashable, int] = {"z_aac": -i, "y_aca": -j, "x_caa": -k}
                     du = xp.roll(u, (-i, -j, -k), axis=(0, 1, 2)) - u
                     dv = xp.roll(v, (-i, -j, -k), axis=(0, 1, 2)) - v
                     dw = xp.roll(w, (-i, -j, -k), axis=(0, 1, 2)) - w
