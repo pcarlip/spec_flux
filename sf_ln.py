@@ -367,7 +367,7 @@ def sf_ln_xr(
 
     for ni, i in enumerate(zind):
         if i % 5 == 0 and debug_print:
-            print(i)
+            print(i, flush=True)
         for nj, j in enumerate(yind):
             for nk, k in enumerate(xind):
                 if not (i == 0 and j == 0 and k == 0):
