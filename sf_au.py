@@ -359,7 +359,7 @@ def sf_au_xr(
 
     for ni, i in enumerate(zind):
         if i % 5 == 0 and debug_print:
-            print(i)
+            print(i, flush=True)
         for nj, j in enumerate(yind):
             for nk, k in enumerate(xind):
                 du = xp.roll(u, (-i, -j, -k), axis=(0, 1, 2)) - u
