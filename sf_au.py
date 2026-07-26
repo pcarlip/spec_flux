@@ -213,6 +213,8 @@ def sf_au_nd(
     spacing_dict: dict[str, Collection[int]] | None = None,
     dims: tuple[str, ...] = ("z_aac", "y_aca", "x_caa"),
     vels: tuple[str, ...] = ("w", "v", "u"),
+    non_per_dims: tuple[bool, ...] = (False, False, False),
+    debug_print: bool = False,
 ) -> xr.DataArray:
     """Calculate the advective structure function for an xarray dataset, with all
     combinations of spacings in some range
@@ -238,6 +240,12 @@ def sf_au_nd(
     vels : tuple[str, ...]
         List of velocity names in the data corresponding to the above dimensions,
         by default ("w", "v", "u")
+    non_per_dims : tuple[bool, ...], optional
+        Axes along which the grid is non-periodic, which changes the roll operation,
+        by default (False, False, False), not currently implemented
+    debug_print : bool, optional
+        Whether to print a regular message with the current iteration of the outer loop
+        and timestamp, by default False, not currently implemented
 
     Returns
     -------
@@ -293,6 +301,7 @@ def sf_au_xr(
     offset: int = 0,
     spacing_lst: Collection[int] | None = None,
     spacing_dict: dict[str, Collection[int]] | None = None,
+    non_per_dims: tuple[bool, bool, bool] = (False, False, False),
     debug_print: bool = False,
 ) -> xr.DataArray:
     """Calculate the advective structure function for an xarray dataset, with all
@@ -315,6 +324,12 @@ def sf_au_xr(
     spacing_dict : dict[str, Collection[int]] | None, optional
         Dict of (integer) spacings to use along each distinct axis, with keys x,y,z,
         by default None
+    non_per_dims : tuple[bool, bool, bool], optional
+        Axes along which the grid is non-periodic, which changes the roll operation,
+        by default (False, False, False), not currently implemented
+    debug_print : bool, optional
+        Whether to print a regular message with the current iteration of the outer loop
+        and timestamp, by default False
 
     Returns
     -------
