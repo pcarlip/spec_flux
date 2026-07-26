@@ -1,5 +1,6 @@
 import cupy as cp
 import numpy as np
+import xarray as xr
 from numba import njit, prange
 
 type ndarray = np.ndarray | cp.ndarray  # noqa: PYI042
@@ -92,3 +93,11 @@ def roll_old(
     else:
         out = shifted_y
     return out
+
+
+def roll_da(ds: xr.DataArray, args: dict) -> xr.DataArray:
+    return ds.roll(args)
+
+
+def shift_da(ds: xr.DataArray, args: dict) -> xr.DataArray:
+    return ds.shift(args)

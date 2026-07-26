@@ -9,7 +9,7 @@ import xarray as xr
 from numba import njit, prange
 
 from .advection import advection, advection_xr
-from .roll import roll_numba, roll_par
+from .roll import roll_da, roll_numba, roll_par, shift_da
 from .utils import (
     Axis,
     GradMethod,
@@ -393,7 +393,9 @@ def sf_au_xr(
     )
 
 
-def sf_au_dir_xr(data: xr.Dataset, axis: Axis, spectral: bool = False) -> xr.DataArray:
+def sf_au_dir_xr(
+    data: xr.Dataset, axis: Axis, spectral: bool = False, periodic: bool = True
+) -> xr.DataArray:
     """Get the advective structure function of an xarray dataset with all spacings along
     a specified axis
 
@@ -405,6 +407,8 @@ def sf_au_dir_xr(data: xr.Dataset, axis: Axis, spectral: bool = False) -> xr.Dat
         Axis along which to shift the velocities and advections
     spectral : bool, optional
         Use spectral derivatives to calculate advection, by default False
+    periodic : bool, optional
+        Whether grid is periodic along the given axis, by default True
 
     Returns
     -------
@@ -429,14 +433,16 @@ def sf_au_dir_xr(data: xr.Dataset, axis: Axis, spectral: bool = False) -> xr.Dat
 
     au_lst = []
 
+    roll_func = roll_da if periodic else shift_da
+
     for i in range(count):
         roll: Mapping[Hashable, int] = {ax_name: -i}
-        du = data["u"].roll(roll) - data["u"]
-        dv = data["v"].roll(roll) - data["v"]
-        dw = data["w"].roll(roll) - data["w"]
-        dau = uadv.roll(roll) - uadv
-        dav = vadv.roll(roll) - vadv
-        daw = wadv.roll(roll) - wadv
+        du = roll_func(data["u"], roll) - data["u"]
+        dv = roll_func(data["v"], roll) - data["v"]
+        dw = roll_func(data["w"], roll) - data["w"]
+        dau = roll_func(uadv, roll) - uadv
+        dav = roll_func(vadv, roll) - vadv
+        daw = roll_func(wadv, roll) - wadv
         au = (
             (du * dau + dv * dav + dw * daw)
             .mean(["z_aac", "y_aca", "x_caa"])

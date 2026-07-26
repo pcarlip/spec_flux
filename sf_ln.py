@@ -8,7 +8,7 @@ import numpy as np
 import xarray as xr
 from numba import njit, prange
 
-from .roll import roll_numba, roll_par
+from .roll import roll_da, roll_numba, roll_par, shift_da
 from .utils import Axis, axis_name, ndarray
 
 # steps:
@@ -261,7 +261,9 @@ def sf_ln_dir(
     return (diffs, sf)
 
 
-def sf_ln_dir_xr(data: xr.Dataset, axis: Axis, order: int = 3) -> xr.DataArray:
+def sf_ln_dir_xr(
+    data: xr.Dataset, axis: Axis, order: int = 3, periodic: bool = True
+) -> xr.DataArray:
     """Get the nth order structure function of an xarray dataset with all spacings along
     a specified axis
 
@@ -274,6 +276,8 @@ def sf_ln_dir_xr(data: xr.Dataset, axis: Axis, order: int = 3) -> xr.DataArray:
     order : int, optional
         power of the velocity differences (e.g. use SF_LL or LLL)
         Default value is 3 (LLL)
+    periodic : bool, optional
+        Whether grid is periodic along the given axis, by default True
 
     Returns
     -------
@@ -287,9 +291,11 @@ def sf_ln_dir_xr(data: xr.Dataset, axis: Axis, order: int = 3) -> xr.DataArray:
     count = len(axis_xr) // 2
     diffs = axis_xr[:count] - axis_xr[0]
 
+    roll_func = roll_da if periodic else shift_da
+
     ln_lst = [
         (
-            ((vel.roll({ax_name: -i}) - vel) ** order)
+            ((roll_func(vel, {ax_name: -i}) - vel) ** order)
             .mean(["z_aac", "y_aca", "x_caa"])
             .expand_dims({"dr": [diffs[i]]})
             .rename(f"SF_{'L' * order}_{ax_name[0]}")
