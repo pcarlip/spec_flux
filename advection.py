@@ -75,7 +75,7 @@ def advection(
         vel_lst = (data.w, data.v, data.u)
     vel = vel_lst[axis.value]
     xp, genfft = xp_fft(vel)
-    if method == GradMethod.oceananigans:
+    if method == GradMethod.precalc:
         if type(data) is SimData:
             adv = (data.wadv, data.vadv, data.uadv)[axis.value]
         elif type(data) is xr.Dataset and "uadv" in data:
@@ -130,7 +130,7 @@ def advection_xr(
         input data doesn't include that information
     """
     vel = (data["w"], data["v"], data["u"])[axis.value]
-    if method == GradMethod.oceananigans:
+    if method == GradMethod.precalc:
         if "uadv" in data and "vadv" in data and "wadv" in data:
             adv = (data["wadv"], data["vadv"], data["uadv"])[axis.value]
         else:

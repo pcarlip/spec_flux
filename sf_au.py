@@ -394,7 +394,10 @@ def sf_au_xr(
 
 
 def sf_au_dir_xr(
-    data: xr.Dataset, axis: Axis, spectral: bool = False, periodic: bool = True
+    data: xr.Dataset,
+    axis: Axis,
+    grad_method: GradMethod = GradMethod.numpy,
+    periodic: bool = True,
 ) -> xr.DataArray:
     """Get the advective structure function of an xarray dataset with all spacings along
     a specified axis
@@ -405,8 +408,8 @@ def sf_au_dir_xr(
         Dataset with velocities u, v, w; dimensions x_caa, y_aca, z_aac
     axis : Axis
         Axis along which to shift the velocities and advections
-    spectral : bool, optional
-        Use spectral derivatives to calculate advection, by default False
+    grad_method : GradMethod, optional
+        How to calculate derivatives for advection, by default GradMethod.numpy
     periodic : bool, optional
         Whether grid is periodic along the given axis, by default True
 
@@ -424,7 +427,6 @@ def sf_au_dir_xr(
     count = len(axis_xr) // 2
     diffs = axis_xr[:count] - axis_xr[0]
 
-    grad_method = GradMethod.spectral if spectral else GradMethod.numpy
     uadv = advection_xr(data, Axis.x, grad_method)
     vadv = advection_xr(data, Axis.y, grad_method)
     wadv = advection_xr(data, Axis.z, grad_method)

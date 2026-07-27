@@ -86,7 +86,7 @@ class SimDataLite:
 
 
 class GradMethod(Enum):
-    oceananigans = 1
+    precalc = 1
     spectral = 2
     numpy = 3
 
