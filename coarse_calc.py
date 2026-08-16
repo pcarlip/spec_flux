@@ -74,3 +74,35 @@ def pi_cg_gauss_xr(data: xr.Dataset, k: float) -> xr.DataArray:
 
 def pi_cg_lst_xr(data: xr.Dataset, k_cg: Iterable[float]) -> xr.DataArray:
     return xr.concat([pi_cg_gauss_xr(data, k) for k in k_cg], "k")
+
+
+def pi_cg_gauss_nd(
+    data: xr.Dataset, k: float, skip_dims: tuple[str, ...] = ("time",)
+) -> xr.DataArray:
+    use_dims = [i for i in data.dims if i not in skip_dims]
+    axes = [data.u.dims.index(i) for i in use_dims]
+    vels = (data["u"], data["v"], data["w"])
+    dx = float(data["x_caa"][1] - data["x_caa"][0])
+    size = (1 / k) / dx
+    gauss_kwargs = {"sigma": size, "mode": "wrap", "axes": axes}
+    smoothed_vels = [
+        xr.apply_ufunc(gaussian_filter, vels[i], kwargs=gauss_kwargs) for i in range(3)
+    ]
+    running_sum = xr.DataArray(0.0, {"time": data.time, "k": k})
+    for i in range(3):
+        for j in range(3):
+            tau_1 = xr.apply_ufunc(
+                gaussian_filter, vels[i] * vels[j], kwargs=gauss_kwargs
+            )
+            tau_2 = smoothed_vels[i] * smoothed_vels[j]
+            tau = tau_1 - tau_2
+            grad = vels[i].differentiate(axes[j], 2)
+            running_sum -= cp.mean(tau * grad).data.get()
+
+    return running_sum
+
+
+def pi_cg_lst_nd(
+    data: xr.Dataset, k_cg: Iterable[float], skip_dims: tuple[str, ...] = ("time",)
+) -> xr.DataArray:
+    return xr.concat([pi_cg_gauss_nd(data, k, skip_dims) for k in k_cg], "k")
