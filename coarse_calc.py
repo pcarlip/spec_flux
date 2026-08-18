@@ -79,12 +79,13 @@ def pi_cg_lst_xr(data: xr.Dataset, k_cg: Iterable[float]) -> xr.DataArray:
 def pi_cg_gauss_nd(
     data: xr.Dataset, k: float, skip_dims: tuple[str, ...] = ("time",)
 ) -> xr.DataArray:
-    use_dims = [i for i in data.dims if i not in skip_dims]
-    axes = [data.u.dims.index(i) for i in use_dims]
+    smooth_dims = [i for i in data.dims if i not in skip_dims]
+    smooth_axes = [data.u.dims.index(i) for i in smooth_dims]
+    axes = ("x_caa", "y_aca", "z_aac")
     vels = (data["u"], data["v"], data["w"])
     dx = float(data["x_caa"][1] - data["x_caa"][0])
     size = (1 / k) / dx
-    gauss_kwargs = {"sigma": size, "mode": "wrap", "axes": axes}
+    gauss_kwargs = {"sigma": size, "mode": "wrap", "axes": smooth_axes}
     smoothed_vels = [
         xr.apply_ufunc(gaussian_filter, vels[i], kwargs=gauss_kwargs) for i in range(3)
     ]
