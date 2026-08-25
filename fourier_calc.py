@@ -12,6 +12,7 @@ from .utils import (
     GradMethod,
     SimData,
     SimDataLite,
+    axis_name,
     ndarray,
     spacings_krange,
     xp_fft,
@@ -240,3 +241,57 @@ def fourier_int_xr_lst(data: xr.Dataset, k_lst: Iterable[float]) -> xr.DataArray
         Spectral flux as a function of k, at given k values
     """
     return xr.concat([fourier_int_xr(data, k) for k in k_lst], "k")
+
+
+def van_atta_prep(
+    data: xr.Dataset, cor_ax: Axis, vel_ax: Axis, periodic: bool = True
+) -> xr.DataArray:
+    """Triple product calculation of transfer function using Van Atta and Chen (1969)
+    velocities are assumed to be: u along x_caa, v along y_aca, w along z_aac
+
+    Parameters
+    ----------
+    data : xr.Dataset
+        n-dimensional velocity data in all directions, must include the cor_ax
+        but need not include other dimensions
+    cor_ax : Axis
+        axis along which to take the correlations
+    vel_ax : Axis
+        second axis from which to use velocities (may be the same as cor_ax)
+    periodic : bool
+        whether to rotate (if periodic) or shift (if not) the velocities along cor_ax
+
+    Returns
+    -------
+    xr.DataArray
+        transfer function as a function of k
+    """
+    cor_ax_name = axis_name(cor_ax)
+    cor_ax_xr = data[cor_ax_name]
+    cor_vel = data[("w", "v", "u")[cor_ax.value]]
+    shift_vel = data[("w", "v", "u")[vel_ax.value]]
+    n_diffs = len(cor_ax_xr) // 2 if periodic else len(cor_ax_xr)
+    r_vals = [cor_ax_xr[i] - cor_ax_xr[0] for i in range(n_diffs)]
+    if periodic:
+        sij = xr.concat(
+            [
+                (shift_vel * cor_vel * shift_vel.roll({cor_ax_name: -i}))
+                .mean(cor_ax_name)
+                .expand_dims({"r": [r_vals[i]]})
+                for i in range(n_diffs)
+            ],
+            "r",
+        )
+    else:
+        sij = xr.concat(
+            [
+                (shift_vel * cor_vel * shift_vel.shift({cor_ax_name: -i}))
+                .mean(cor_ax_name, skipna=True)
+                .expand_dims({"r": [r_vals[i]]})
+                for i in range(n_diffs)
+            ],
+            "r",
+        )
+    Lij = xrft.fft(sij, dim="r").rename({"freq_r": "k"}).as_numpy()
+    Lij = Lij * 2 * np.pi * 1j * Lij["k"]
+    return 4 * Lij - 2 * Lij["k"] * Lij.differentiate("k")
