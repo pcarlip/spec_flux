@@ -292,6 +292,16 @@ def van_atta_prep(
             ],
             "r",
         )
-    Lij = xrft.fft(sij, dim="r").rename({"freq_r": "k"}).as_numpy()
+    Lij = xrft.fft(sij, dim="r", real_dim="r").rename({"freq_r": "k"}).as_numpy()
     Lij = Lij * 2 * np.pi * 1j * Lij["k"]
     return 4 * Lij - 2 * Lij["k"] * Lij.differentiate("k")
+
+
+def van_atta_int(data: xr.DataArray, k_lst: Iterable[float]) -> xr.DataArray:
+    out_lst: list[xr.DataArray] = []
+    for k in k_lst:
+        masked = data.where(data["k"] <= k, 0.0)
+        val = masked.integrate("k").expand_dims({"k": [k]})
+        out_lst.append(val.real)
+
+    return xr.concat(out_lst, "k")
