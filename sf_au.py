@@ -281,6 +281,9 @@ def sf_au_nd(
 
     for inds, ninds in zip(spacing_comb, spacing_enum, strict=True):
         sf_arr = xp.zeros_like(vel_data[0])
+        if debug_print and ninds[0] % 5 == 0:
+            print(ninds[0], flush=True)
+            print(time.ctime(), flush=True)
         for i in range(ndim):
             du = vel_data[i] - xp.roll(vel_data[i], inds, range(ndim))
             dau = adv_data[i] - xp.roll(adv_data[i], inds, range(ndim))
