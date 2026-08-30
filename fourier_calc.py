@@ -304,4 +304,5 @@ def van_atta_prep(
 def van_atta_int(data: xr.DataArray, mean_axes: Collection[str]) -> xr.DataArray:
     out: xr.DataArray = cumulative_simpson(data, coord="k")  # type: ignore
     mean = out.isel(freq_r=slice(None, -1)).mean(mean_axes).real
-    return mean - mean.isel(freq_r=-1)
+    norm = mean - mean.isel(freq_r=-1)
+    return norm.assign_coords(k=("freq_r", mean["freq_r"].data * 2 * np.pi))
