@@ -1,10 +1,11 @@
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from typing import Literal
 
 import cupy_xarray
 import numpy as np
 import xarray as xr
 import xrft
+from xrscipy.integrate import cumulative_simpson
 
 from .advection import advection, advection_xr
 from .utils import (
@@ -300,11 +301,7 @@ def van_atta_prep(
     return 4 * l1 - 2 * l1["k"] * l1.differentiate("k")
 
 
-def van_atta_int(data: xr.DataArray, k_lst: Iterable[float]) -> xr.DataArray:
-    out_lst: list[xr.DataArray] = []
-    for k in k_lst:
-        masked = data.where((data["k"] <= k).as_cupy(), 0.0)
-        val = masked.integrate("k").expand_dims({"k": [k]})
-        out_lst.append(val)
-
-    return xr.concat(out_lst, "k")
+def van_atta_int(data: xr.DataArray, mean_axes: Collection[str]) -> xr.DataArray:
+    out: xr.DataArray = cumulative_simpson(data, coord="k")  # type: ignore
+    mean = out.isel(freq_r=slice(None, -1)).mean(mean_axes).real
+    return mean - mean.isel(freq_r=-1)
