@@ -274,7 +274,7 @@ def van_atta_prep(
     shift_range = range(-n_shifts, n_shifts + 1)
     dx = cor_ax_xr[1] - cor_ax_xr[0]
     if periodic:
-        sij = xr.concat(
+        si1i = xr.concat(
             [
                 (shift_vel * cor_vel * shift_vel.roll({cor_ax_name: i}))
                 .mean(cor_ax_name)
@@ -284,7 +284,7 @@ def van_atta_prep(
             "r",
         )
     else:
-        sij = xr.concat(
+        si1i = xr.concat(
             [
                 (shift_vel * cor_vel * shift_vel.shift({cor_ax_name: i}))
                 .mean(cor_ax_name, skipna=True)
@@ -293,17 +293,17 @@ def van_atta_prep(
             ],
             "r",
         )
-    sij = 0.5 * (sij - sij.isel(r=slice(None, None, -1)).data)
-    Lij = xrft.fft(sij, dim="r", real_dim="r").as_numpy()
-    Lij = Lij.assign_coords(k=("freq_r", Lij["freq_r"].data * 2 * np.pi))
-    Lij = Lij * 1j * Lij["k"] / (2 * np.pi)
-    return 4 * Lij - 2 * Lij["k"] * Lij.differentiate("k")
+    si1i = 0.5 * (si1i - si1i.isel(r=slice(None, None, -1)).data)
+    l1 = xrft.fft(si1i, dim="r", real_dim="r").as_numpy()
+    l1 = l1.assign_coords(k=("freq_r", l1["freq_r"].data * 2 * np.pi))
+    l1 = l1 * 1j * l1["k"] / (2 * np.pi)
+    return 4 * l1 - 2 * l1["k"] * l1.differentiate("k")
 
 
 def van_atta_int(data: xr.DataArray, k_lst: Iterable[float]) -> xr.DataArray:
     out_lst: list[xr.DataArray] = []
     for k in k_lst:
-        masked = data.where((data["k"] >= k).as_cupy(), 0.0)
+        masked = data.where((data["k"] <= k).as_cupy(), 0.0)
         val = masked.integrate("k").expand_dims({"k": [k]})
         out_lst.append(val)
 
