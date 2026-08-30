@@ -271,24 +271,25 @@ def van_atta_prep(
     cor_vel = data[("w", "v", "u")[cor_ax.value]]
     shift_vel = data[("w", "v", "u")[vel_ax.value]]
     n_shifts = len(cor_ax_xr) // 2 if periodic else len(cor_ax_xr)
-    r_vals = [cor_ax_xr[i] - cor_ax_xr[0] for i in range(n_shifts)]
+    shift_range = range(-n_shifts, n_shifts + 1)
+    dx = cor_ax_xr[1] - cor_ax_xr[0]
     if periodic:
         sij = xr.concat(
             [
-                (shift_vel * cor_vel * shift_vel.roll({cor_ax_name: -i}))
+                (shift_vel * cor_vel * shift_vel.roll({cor_ax_name: i}))
                 .mean(cor_ax_name)
-                .expand_dims({"r": [r_vals[i]]})
-                for i in range(n_shifts)
+                .expand_dims({"r": [i * dx]})
+                for i in shift_range
             ],
             "r",
         )
     else:
         sij = xr.concat(
             [
-                (shift_vel * cor_vel * shift_vel.shift({cor_ax_name: -i}))
+                (shift_vel * cor_vel * shift_vel.shift({cor_ax_name: i}))
                 .mean(cor_ax_name, skipna=True)
-                .expand_dims({"r": [r_vals[i]]})
-                for i in range(n_shifts)
+                .expand_dims({"r": [i * dx]})
+                for i in shift_range
             ],
             "r",
         )
