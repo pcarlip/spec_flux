@@ -33,69 +33,6 @@ def spectral_der(vel_hat: ndarray, k_grid: ndarray) -> ndarray:
     return xp.real(genfft.ifftn(genfft.ifftshift(1j * k_grid * vel_hat)))
 
 
-def advection(
-    data: SimData | SimDataLite | xr.Dataset,
-    axis: Axis,
-    spacings: tuple[float, ...],
-    k_ranges: tuple[ndarray, ndarray, ndarray],
-    method: GradMethod,
-    edge_order: Literal[1, 2] = 1,
-) -> ndarray:
-    """Calculate (realspace) advection of a velocity array
-
-    Parameters
-    ----------
-    data : SimData | SimDataLite | xr.Dataset
-        Dataclass with velocity and (optionally) advection data
-    axis : Axis
-        Velocity direction to use
-    spacings : tuple[float, ...]
-        Grid spacings
-    k_ranges : tuple[ndarray, ndarray, ndarray]
-        Range of m-values (z), l-values (y), k-values (x) associated with the grid size
-    method : GradMethod
-        Method for calculating velocity gradients
-    edge_order : Literal[1, 2], optional
-        Order of finite difference gradients if using GradMethod.numpy, by default 1
-
-    Returns
-    -------
-    ndarray
-        Advection of selected velocity component
-
-    Raises
-    ------
-    Exception
-        Attempt to use GradMethod.oceananigans (precalculated advection) when
-        input data doesn't include that information
-    """
-    if type(data) is xr.Dataset:
-        vel_lst = (data.w.data, data.v.data, data.u.data)
-    else:
-        vel_lst = (data.w, data.v, data.u)
-    vel = vel_lst[axis.value]
-    xp, genfft = xp_fft(vel)
-    if method == GradMethod.precalc:
-        if type(data) is SimData:
-            adv = (data.wadv, data.vadv, data.uadv)[axis.value]
-        elif type(data) is xr.Dataset and "uadv" in data:
-            adv = (data.wadv.data, data.vadv.data, data.uadv.data)[axis.value]
-        else:
-            raise Exception(
-                "Include advection arrays to use Oceananigans or other precalculated gradients"
-            )
-    elif method == GradMethod.numpy:
-        adv = sum(
-            xp.gradient(vel, spacings[i], axis=i, edge_order=edge_order) * vel_lst[i]
-            for i in range(3)
-        )
-    else:  # GradMethod == GradMethod.spectral
-        k_mesh = xp.meshgrid(*k_ranges, indexing="ij")
-        vel_hat = genfft.fftshift(genfft.fftn(vel))
-        adv = sum(spectral_der(vel_hat, k_mesh[i]) * vel_lst[i] for i in range(3))
-    return adv
-
-
 def advection_xr(
     data: xr.Dataset,
     axis: Axis,
