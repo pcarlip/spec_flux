@@ -6,10 +6,9 @@ import cupy as cp
 import cupy_xarray
 import numpy as np
 import xarray as xr
-from numba import njit, prange
 
 from .advection import advection_xr
-from .utils import Axis, GradMethod, axis_name, ndarray, roll_da, shift_da, xp_fft
+from .utils import Axis, GradMethod, axis_name, ndarray, roll_da, shift_da
 
 
 @cp.fuse
