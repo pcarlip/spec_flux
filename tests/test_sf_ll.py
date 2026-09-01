@@ -1,14 +1,11 @@
-import sys
-
 import cupy as cp
 import cupy_xarray
 import fluidsf
 import numpy as np
 import xarray as xr
 
-sys.path.append("..")
-from numerics.sf_ln import sf_ln, sf_ln_dir, sf_ln_dir_xr, sf_ln_nd, sf_ln_xr
-from numerics.utils import Axis
+from spec_flux.sf_ln import sf_ln, sf_ln_dir, sf_ln_dir_xr, sf_ln_nd, sf_ln_xr
+from spec_flux.utils import Axis
 
 
 def test_minimal() -> None:

@@ -7,7 +7,18 @@ authors = [
     { name = "pcarlip", email = "carlipp@oregonstate.edu" }
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "cupy-cuda12x>=14.2.0",
+    "cupy-xarray>=0.1.5",
+    "numba>=0.67.0",
+    "numpy>=2.5.2",
+    "pandas>=3.0.5",
+    "scipy>=1.18.1",
+    "xarray>=2026.7.0",
+    "xarray-extras>=0.6.0",
+    "xrft",
+    "xrscipy>=3.1.0",
+]
 
 [project.scripts]
 spec-flux = "spec_flux:main"
@@ -15,3 +26,15 @@ spec-flux = "spec_flux:main"
 [build-system]
 requires = ["uv_build>=0.12.7,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.uv.sources]
+xrft = { git = "https://github.com/pcarlip/xrft.git", branch = "cupy" }
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.5",
+]
+test = [
+    "fluidsf>=0.2.2",
+    "pytest>=9.1.1",
+]

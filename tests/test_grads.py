@@ -1,12 +1,9 @@
-import sys
-
 import cupy as cp
 import numpy as np
 
-sys.path.append("..")
 
-from numerics.advection import spectral_der
-from numerics.utils import SimDataLite, spacings_krange, xp_fft
+from spec_flux.advection import spectral_der
+from spec_flux.utils import SimDataLite, spacings_krange, xp_fft
 
 
 def test_spec_grad() -> None:
