@@ -3,9 +3,7 @@ name = "spec-flux"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-authors = [
-    { name = "pcarlip", email = "carlipp@oregonstate.edu" }
-]
+authors = [{ name = "pcarlip", email = "carlipp@oregonstate.edu" }]
 requires-python = ">=3.13"
 dependencies = [
     "cupy-cuda12x>=14.2.0",
@@ -33,13 +31,8 @@ xrft = { git = "https://github.com/pcarlip/xrft.git", branch = "cupy" }
 # will switch to main branch if my PR is accepted
 
 [dependency-groups]
-dev = [
-    "ruff>=0.16.5",
-]
-test = [
-    "fluidsf>=0.2.2",
-    "pytest>=9.1.1",
-]
+dev = ["ruff>=0.16.5"]
+test = ["fluidsf>=0.2.2", "pytest>=9.1.1"]
 
 [tool.ruff]
 exclude = [
@@ -80,7 +73,19 @@ select = [
     "FURB",
 ]
 
-ignore = ["F401", "PLR0913", "E203", "B018", "PD901", "PLR0917", "PLR0914"]
+ignore = [
+    "F401",
+    "ANN101",
+    "ANN102",
+    "PLR0913",
+    "E203",
+    "B018",
+    "PD901",
+    "PLR0917",
+    "PLR0914",
+    "RUF003",
+    "PLR0915",
+]
 fixable = ["ALL"]
 unfixable = []
 
