@@ -16,6 +16,32 @@ def fluidsf_compat(
     z: ndarray,
     sf_names: list[str],
 ) -> dict[str, np.ndarray]:
+    """Get structure functions with compatible input ant output to fluidsf, using my
+    existing structure function methods
+    Arrays must be indexed as (z,y,x)
+
+    Parameters
+    ----------
+    u : ndarray
+        velocity along x
+    v : ndarray
+        velocity along y
+    w : ndarray
+        velocity along z
+    x : ndarray
+        locations along x
+    y : ndarray
+        locations along y
+    z : ndarray
+        locations along z
+    sf_names : list[str]
+        structure functions to calculate (supports 'ASF_V', 'LL', and 'LLL')
+
+    Returns
+    -------
+    dict[str, np.ndarray]
+        dictionary of directional structure function names and values
+    """
 
     dims = ("z_aac", "y_aca", "x_caa")
     ds = xr.Dataset(
