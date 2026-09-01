@@ -24,6 +24,7 @@ class Axis(Enum):
 
 
 def axis_name(ax: Axis) -> str:
+    """Get Oceananigans axis name from Axis object"""
     if ax == Axis.x:
         return "x_caa"
     elif ax == Axis.y:
