@@ -29,6 +29,8 @@ build-backend = "uv_build"
 
 [tool.uv.sources]
 xrft = { git = "https://github.com/pcarlip/xrft.git", branch = "cupy" }
+# currently using my own branch of xrft which supports cupy
+# will switch to main branch if my PR is accepted
 
 [dependency-groups]
 dev = [
@@ -38,3 +40,61 @@ test = [
     "fluidsf>=0.2.2",
     "pytest>=9.1.1",
 ]
+
+[tool.ruff]
+exclude = [
+    ".git",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "venv",
+]
+
+line-length = 90
+indent-width = 4
+
+select = [
+    "F",
+    "B",
+    "UP",
+    "I",
+    "ANN",
+    "E",
+    "A",
+    "C4",
+    "ICN",
+    "PIE",
+    "SIM",
+    "PLE",
+    "PLC",
+    "PLR",
+    "PLW",
+    "NPY",
+    "RUF",
+    "PD",
+    "PYI",
+    "PERF",
+    "C",
+    "FURB",
+]
+
+ignore = ["F401", "PLR0913", "E203", "B018", "PD901", "PLR0917", "PLR0914"]
+fixable = ["ALL"]
+unfixable = []
+
+target-version = "py313"
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
