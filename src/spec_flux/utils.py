@@ -161,12 +161,16 @@ def krange_fft(
     """
     _, genfft = xp_fft(data.u)
     ranges = []
-    for i in range(3):
-        Ni = len(data[axes[i]])
-        spacing = data[axes[i]][1] - data[axes[i]][0]
+    for ax in axes:
+        ds_ax = data[ax]
+        Ni = len(ds_ax)
+        spacing = float(ds_ax[1] - ds_ax[0])
         Li = Ni * spacing
         dk = 2 * np.pi / Li
         k_range = genfft.fftshift(genfft.fftfreq(Ni) * Ni * dk)
+        if data.cupy.is_cupy:
+            # not sure why I need this check given genfft, but it breaks without it
+            k_range = cp.array(k_range)
         ranges.append(k_range)
     ranges = tuple(ranges)
     return ranges
