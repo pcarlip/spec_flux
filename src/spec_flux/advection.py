@@ -69,9 +69,7 @@ def advection_xr(
         if "uadv" in data and "vadv" in data and "wadv" in data:
             adv = (data["wadv"], data["vadv"], data["uadv"])[axis.value]
         else:
-            raise Exception(
-                "Include advection arrays to use Oceananigans or other precalculated gradients"
-            )
+            raise Exception("Include advection arrays to use precalculated gradients")
     elif method == GradMethod.numpy:
         adv = (
             data["u"] * vel.differentiate(ax_names[2], edge_order)
