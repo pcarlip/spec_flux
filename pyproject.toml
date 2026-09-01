@@ -1,6 +1,6 @@
 [project]
 name = "spectral_flux"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python tools for calculating spectral flux from fluid velocities"
 readme = "README.md"
 authors = [{ name = "pcarlip", email = "peter.carlip@proton.me" }]
