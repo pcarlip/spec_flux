@@ -4,222 +4,149 @@ import fluidsf
 import numpy as np
 import xarray as xr
 
-from spec_flux.sf_ln import sf_ln, sf_ln_dir, sf_ln_dir_xr, sf_ln_nd, sf_ln_xr
+from spec_flux.sf_ln import sf_ln_dir_xr, sf_ln_nd, sf_ln_xr
 from spec_flux.utils import Axis
 
 
 def test_minimal() -> None:
     """The structure function of a uniform array must be 0"""
     u = np.ones(shape=(3, 3, 3))
-    x = np.array([0, 1, 2])
-    out = sf_ln(u, u, u, x, x, x)
-    assert np.all(out[1] == 0)
+    x = np.arange(3)
+    dims = ("z_aac", "y_aca", "x_caa")
+    vels = xr.Dataset(
+        {"u": (dims, u), "v": (dims, u), "w": (dims, u)}, dict.fromkeys(dims, x)
+    )
+    out = sf_ln_xr(vels, 3)
+    assert np.all(out.data == 0)
 
 
 def test_rectangle() -> None:
     """Test that we can calculate the structure function of a non-cubic array"""
     u = np.ones(shape=(5, 4, 3))
-    x = np.array([0, 1, 2])
-    y = np.array([0, 1, 2, 3])
-    z = np.array([0, 1, 2, 3, 4])
-    out = sf_ln(u, u, u, x, y, z)
-    assert np.all(out[1] == 0)
+    x = np.arange(3)
+    y = np.arange(4)
+    z = np.arange(5)
+    dims = ("z_aac", "y_aca", "x_caa")
+    vels = xr.Dataset(
+        {"u": (dims, u), "v": (dims, u), "w": (dims, u)},
+        coords={"z_aac": z, "y_aca": y, "x_caa": x},
+    )
+    out = sf_ln_xr(vels, 3)
+    assert np.all(out.data == 0)
 
 
 def test_minimal_cp() -> None:
     """Repeat test_minimal with a cupy array"""
-    u = cp.ones(shape=(3, 3, 3))
-    x = cp.array([0, 1, 2])
-    out = sf_ln(u, u, u, x, x, x)
-    assert np.all(out[1] == 0)
+    u = np.ones(shape=(3, 3, 3))
+    x = np.arange(3)
+    dims = ("z_aac", "y_aca", "x_caa")
+    vels = xr.Dataset(
+        {"u": (dims, u), "v": (dims, u), "w": (dims, u)}, dict.fromkeys(dims, x)
+    ).cupy.as_cupy()
+    out = sf_ln_xr(vels, 3)
+    assert np.all(out.data == 0)
 
 
 def test_rectangle_cp() -> None:
-    """Repeat test_rectangle with a cupy array"""
-    u = cp.ones(shape=(5, 4, 3))
-    x = cp.array([0, 1, 2])
-    y = cp.array([0, 1, 2, 3])
-    z = cp.array([0, 1, 2, 3, 4])
-    out = sf_ln(u, u, u, x, y, z)
-    assert np.all(out[1] == 0)
+    u = np.ones(shape=(5, 4, 3))
+    x = np.arange(3)
+    y = np.arange(4)
+    z = np.arange(5)
+    dims = ("z_aac", "y_aca", "x_caa")
+    vels = xr.Dataset(
+        {"u": (dims, u), "v": (dims, u), "w": (dims, u)},
+        coords={"z_aac": z, "y_aca": y, "x_caa": x},
+    ).cupy.as_cupy()
+    out = sf_ln_xr(vels, 3)
+    assert np.all(out.data == 0)
+
+
+def random_data() -> xr.Dataset:
+    rng = np.random.default_rng(31415)
+    u = rng.normal(size=(10, 11, 12))
+    v = rng.normal(size=(10, 11, 12))
+    w = rng.normal(size=(10, 11, 12))
+    x = np.arange(12)
+    y = np.arange(11)
+    z = np.arange(10)
+
+    dims = ("z_aac", "y_aca", "x_caa")
+
+    ds = xr.Dataset(
+        {"u": (dims, u), "v": (dims, v), "w": (dims, w)},
+        coords={"z_aac": z, "y_aca": y, "x_caa": x},
+    )
+    return ds
 
 
 def test_fluidsf_comp() -> None:
     """Structure function results along only one axis should match fluidsf"""
-    rng = np.random.default_rng(31415)
-    u = rng.normal(size=(10, 11, 12))
-    v = rng.normal(size=(10, 11, 12))
-    w = rng.normal(size=(10, 11, 12))
-    x = np.arange(12)
-    y = np.arange(11)
-    z = np.arange(10)
+    ds = random_data()
 
-    full_sf = sf_ln(u, v, w, x, y, z)
-    fsf = fluidsf.generate_structure_functions_3d(u, v, w, x, y, z, ["LLL"])
-    assert np.isclose(full_sf[1][0, 0, :], fsf["SF_LLL_x"]).all()
-    assert np.isclose(full_sf[1][0, :, 0], fsf["SF_LLL_y"]).all()
-    assert np.isclose(full_sf[1][:, 0, 0], fsf["SF_LLL_z"]).all()
-
-
-def test_fluidsf_comp_dir() -> None:
-    """Structure function results along only one axis should match fluidsf"""
-    rng = np.random.default_rng(31415)
-    u = rng.normal(size=(10, 11, 12))
-    v = rng.normal(size=(10, 11, 12))
-    w = rng.normal(size=(10, 11, 12))
-    x = np.arange(12)
-    y = np.arange(11)
-    z = np.arange(10)
-
-    full_sf = (
-        sf_ln_dir(u, v, w, x, y, z, Axis.x),
-        sf_ln_dir(u, v, w, x, y, z, Axis.y),
-        sf_ln_dir(u, v, w, x, y, z, Axis.z),
+    fsf = fluidsf.generate_structure_functions_3d(
+        ds.u.data,
+        ds.v.data,
+        ds.w.data,
+        ds.x_caa.data,
+        ds.y_aca.data,
+        ds.z_aac.data,
+        ["LLL"],
     )
-    fsf = fluidsf.generate_structure_functions_3d(u, v, w, x, y, z, ["LLL"])
-    assert np.isclose(full_sf[0][1], fsf["SF_LLL_x"]).all()
-    assert np.isclose(full_sf[1][1], fsf["SF_LLL_y"]).all()
-    assert np.isclose(full_sf[2][1], fsf["SF_LLL_z"]).all()
-
-
-def test_cupy_comp() -> None:
-    """Cupy and numpy calculations should agree"""
-    rng = np.random.default_rng(31415)
-    u = rng.normal(size=(10, 11, 12))
-    v = rng.normal(size=(10, 11, 12))
-    w = rng.normal(size=(10, 11, 12))
-    x = np.arange(12)
-    y = np.arange(11)
-    z = np.arange(10)
-
-    cu = cp.array(u)
-    cv = cp.array(v)
-    cw = cp.array(w)
-    cx = cp.array(x)
-    cy = cp.array(y)
-    cz = cp.array(z)
-
-    np_sf = sf_ln(u, v, w, x, y, z)
-    cp_sf = sf_ln(cu, cv, cw, cx, cy, cz)
-
-    assert np.isclose(np_sf[1], cp.asnumpy(cp_sf[1])).all()
-    assert np.isclose(np_sf[0][0], cp.asnumpy(cp_sf[0][0])).all()
-    assert np.isclose(np_sf[0][1], cp.asnumpy(cp_sf[0][1])).all()
-    assert np.isclose(np_sf[0][2], cp.asnumpy(cp_sf[0][2])).all()
-
-
-def test_cupy_comp_dir() -> None:
-    """Cupy and numpy calculations should agree"""
-    rng = np.random.default_rng(31415)
-    u = rng.normal(size=(10, 11, 12))
-    v = rng.normal(size=(10, 11, 12))
-    w = rng.normal(size=(10, 11, 12))
-    x = np.arange(12)
-    y = np.arange(11)
-    z = np.arange(10)
-
-    cu = cp.array(u)
-    cv = cp.array(v)
-    cw = cp.array(w)
-    cx = cp.array(x)
-    cy = cp.array(y)
-    cz = cp.array(z)
-
-    np_sf = (
-        sf_ln_dir(u, v, w, x, y, z, Axis.x),
-        sf_ln_dir(u, v, w, x, y, z, Axis.y),
-        sf_ln_dir(u, v, w, x, y, z, Axis.z),
-    )
-    cp_sf = (
-        sf_ln_dir(cu, cv, cw, cx, cy, cz, Axis.x),
-        sf_ln_dir(cu, cv, cw, cx, cy, cz, Axis.y),
-        sf_ln_dir(cu, cv, cw, cx, cy, cz, Axis.z),
-    )
-
-    for i in range(3):
-        for j in range(2):
-            assert np.isclose(np_sf[i][j], cp.asnumpy(cp_sf[i][j])).all()
+    full_sf = sf_ln_xr(ds, 3)
+    np.testing.assert_allclose(full_sf.data[0, 0, :], fsf["SF_LLL_x"])
+    np.testing.assert_allclose(full_sf.data[0, :, 0], fsf["SF_LLL_y"])
+    np.testing.assert_allclose(full_sf.data[:, 0, 0], fsf["SF_LLL_z"])
 
 
 def test_fluidsf_xr_dir() -> None:
     """Structure function results along only one axis should match fluidsf"""
-    rng = np.random.default_rng(31415)
-    u = rng.normal(size=(10, 11, 12))
-    v = rng.normal(size=(10, 11, 12))
-    w = rng.normal(size=(10, 11, 12))
-    x = np.arange(12)
-    y = np.arange(11)
-    z = np.arange(10)
+    ds = random_data()
 
-    dims = ("z_aac", "y_aca", "x_caa")
-
-    ds = xr.Dataset(
-        {"u": (dims, u), "v": (dims, v), "w": (dims, w)},
-        coords={"z_aac": z, "y_aca": y, "x_caa": x},
+    fsf = fluidsf.generate_structure_functions_3d(
+        ds.u.data,
+        ds.v.data,
+        ds.w.data,
+        ds.x_caa.data,
+        ds.y_aca.data,
+        ds.z_aac.data,
+        ["LLL"],
     )
-
-    fsf = fluidsf.generate_structure_functions_3d(u, v, w, x, y, z, ["LLL"])
-    np.testing.assert_allclose(sf_ln_dir_xr(ds, Axis.x).data, fsf["SF_LLL_x"])
-    np.testing.assert_allclose(sf_ln_dir_xr(ds, Axis.y).data, fsf["SF_LLL_y"])
-    np.testing.assert_allclose(sf_ln_dir_xr(ds, Axis.z).data, fsf["SF_LLL_z"])
+    np.testing.assert_allclose(sf_ln_dir_xr(ds, Axis.x, 3).data, fsf["SF_LLL_x"])
+    np.testing.assert_allclose(sf_ln_dir_xr(ds, Axis.y, 3).data, fsf["SF_LLL_y"])
+    np.testing.assert_allclose(sf_ln_dir_xr(ds, Axis.z, 3).data, fsf["SF_LLL_z"])
 
 
-def test_fluidsf_xr_dir_cp() -> None:
-    """Structure function results along only one axis should match fluidsf"""
-    rng = np.random.default_rng(31415)
-    u = rng.normal(size=(10, 11, 12))
-    v = rng.normal(size=(10, 11, 12))
-    w = rng.normal(size=(10, 11, 12))
-    x = np.arange(12)
-    y = np.arange(11)
-    z = np.arange(10)
+def test_cupy_comp() -> None:
+    """Cupy and numpy calculations should agree"""
+    ds = random_data()
 
-    dims = ("z_aac", "y_aca", "x_caa")
+    np_sf = sf_ln_xr(ds, 3)
+    cp_sf = sf_ln_xr(ds.cupy.as_cupy(), 3)
 
-    ds = xr.Dataset(
-        {"u": (dims, u), "v": (dims, v), "w": (dims, w)},
-        coords={"z_aac": z, "y_aca": y, "x_caa": x},
-    ).as_cupy()
-
-    fsf = fluidsf.generate_structure_functions_3d(u, v, w, x, y, z, ["LLL"])
-    np.testing.assert_allclose(sf_ln_dir_xr(ds, Axis.x).data.get(), fsf["SF_LLL_x"])
-    np.testing.assert_allclose(sf_ln_dir_xr(ds, Axis.y).data.get(), fsf["SF_LLL_y"])
-    np.testing.assert_allclose(sf_ln_dir_xr(ds, Axis.z).data.get(), fsf["SF_LLL_z"])
+    np.testing.assert_allclose(np_sf.data, cp_sf.as_numpy().data)
 
 
-def test_xr_comp() -> None:
-    rng = np.random.default_rng(31415)
-    u = rng.normal(size=(10, 11, 12))
-    v = rng.normal(size=(10, 11, 12))
-    w = rng.normal(size=(10, 11, 12))
-    x = np.arange(12)
-    y = np.arange(11)
-    z = np.arange(10)
+def test_cupy_comp_dir() -> None:
+    """Cupy and numpy calculations along one axis should agree"""
+    ds = random_data()
 
-    dims = ("z_aac", "y_aca", "x_caa")
+    np_sf_x = sf_ln_dir_xr(ds, Axis.x, 3)
+    cp_sf_x = sf_ln_dir_xr(ds.as_cupy(), Axis.x, 3)
 
-    ds = xr.Dataset(
-        {"u": (dims, u), "v": (dims, v), "w": (dims, w)},
-        coords={"z_aac": z, "y_aca": y, "x_caa": x},
-    )
+    np.testing.assert_allclose(np_sf_x.data, cp_sf_x.as_numpy().data)
 
-    np.testing.assert_allclose(sf_ln_xr(ds).data, sf_ln(u, v, w, x, y, z)[1])
+    np_sf_y = sf_ln_dir_xr(ds, Axis.y, 3)
+    cp_sf_y = sf_ln_dir_xr(ds.as_cupy(), Axis.y, 3)
+
+    np.testing.assert_allclose(np_sf_y.data, cp_sf_y.as_numpy().data)
+
+    np_sf_z = sf_ln_dir_xr(ds, Axis.z, 3)
+    cp_sf_z = sf_ln_dir_xr(ds.as_cupy(), Axis.z, 3)
+
+    np.testing.assert_allclose(np_sf_z.data, cp_sf_z.as_numpy().data)
 
 
 def test_nd_comp() -> None:
-    rng = np.random.default_rng(31415)
-    u = rng.normal(size=(10, 11, 12))
-    v = rng.normal(size=(10, 11, 12))
-    w = rng.normal(size=(10, 11, 12))
-    x = np.arange(12)
-    y = np.arange(11)
-    z = np.arange(10)
+    ds = random_data()
 
-    dims = ("z_aac", "y_aca", "x_caa")
-
-    ds = xr.Dataset(
-        {"u": (dims, u), "v": (dims, v), "w": (dims, w)},
-        coords={"z_aac": z, "y_aca": y, "x_caa": x},
-    )
-
-    np.testing.assert_allclose(sf_ln_nd(ds).data, sf_ln_xr(ds).data)
+    np.testing.assert_allclose(sf_ln_nd(ds, 3).data, sf_ln_xr(ds, 3).data)
