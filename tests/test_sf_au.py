@@ -4,8 +4,8 @@ import fluidsf
 import numpy as np
 import xarray as xr
 
-from spec_flux.sf_au import sf_au_dir_xr, sf_au_nd, sf_au_xr
-from spec_flux.utils import Axis
+from spectral_flux.sf_au import sf_au_dir_xr, sf_au_nd, sf_au_xr
+from spectral_flux.utils import Axis
 
 
 def test_minimal() -> None:

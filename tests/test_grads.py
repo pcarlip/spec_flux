@@ -2,8 +2,8 @@ import cupy as cp
 import numpy as np
 import xarray as xr
 
-from spec_flux.advection import spectral_der
-from spec_flux.utils import krange_fft, xp_fft
+from spectral_flux.advection import spectral_der
+from spectral_flux.utils import krange_fft, xp_fft
 
 
 def test_spec_grad() -> None:
