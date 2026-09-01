@@ -1,7 +1,5 @@
-from dataclasses import dataclass
 from enum import Enum, StrEnum
 from types import ModuleType
-from typing import Self
 
 import cupy as cp
 import cupyx
@@ -11,78 +9,6 @@ import xarray as xr
 from xarray_extras.interpolate import splev, splrep
 
 type ndarray = np.ndarray | cp.ndarray  # noqa: PYI042
-
-
-@dataclass
-class SimData:
-    """A wrapper to store the relevant data from the NetCDF at a particular time step,
-    including pre-calculated advection components"""
-
-    u: ndarray
-    v: ndarray
-    w: ndarray
-    uadv: ndarray
-    vadv: ndarray
-    wadv: ndarray
-    x: ndarray
-    y: ndarray
-    z: ndarray
-
-    @classmethod
-    def from_xr(cls, ds: xr.Dataset):  # noqa: ANN206
-        return cls(
-            ds["u"].data,
-            ds["v"].data,
-            ds["w"].data,
-            ds["uadv"].data,
-            ds["vadv"].data,
-            ds["wadv"].data,
-            ds["x_caa"].data,
-            ds["y_aca"].data,
-            ds["z_aac"].data,
-        )
-
-
-@dataclass
-class SimDataLite:
-    """A wrapper to store the relevant data from the NetCDF at a particular time step,
-    not including advection components"""
-
-    u: ndarray
-    v: ndarray
-    w: ndarray
-    x: ndarray
-    y: ndarray
-    z: ndarray
-
-    @classmethod
-    def from_xr(cls, ds: xr.Dataset):  # noqa: ANN206
-        return cls(
-            ds["u"].data,
-            ds["v"].data,
-            ds["w"].data,
-            ds["x_caa"].data,
-            ds["y_aca"].data,
-            ds["z_aac"].data,
-        )
-
-    def to_cp(self) -> Self:
-        self.u = cp.array(self.u)
-        self.v = cp.array(self.v)
-        self.w = cp.array(self.w)
-        self.x = cp.array(self.x)
-        self.y = cp.array(self.y)
-        self.z = cp.array(self.z)
-        return self
-
-    def to_np(self) -> Self:
-        self.u = cp.asnumpy(self.u)
-        self.v = cp.asnumpy(self.v)
-        self.w = cp.asnumpy(self.w)
-        self.x = cp.asnumpy(self.x)
-        self.y = cp.asnumpy(self.y)
-        self.z = cp.asnumpy(self.z)
-        return self
 
 
 class GradMethod(Enum):
@@ -117,11 +43,6 @@ class SFType(StrEnum):
     LLL = "LLL"
 
 
-class IntMethod(Enum):
-    simpson = 0
-    addition = 1
-
-
 def xp_fft(array: ndarray) -> tuple[ModuleType, ModuleType]:
     """Choose the correct array and fft modules for a given array
 
@@ -151,7 +72,7 @@ def krange_fft(
     ----------
     data : xr.Dataset
         Dataset containing grid axes
-    axes : tuple[str, str, str]
+    axes : tuple[str, str, str], optional
         Axis names in dataset; by default ("z_aac", "y_aca", "x_caa")
 
     Returns
@@ -207,6 +128,7 @@ def ocean_interp_per(
     oc_input: xr.Dataset,
     time: int = -1,
     periodic_axes: tuple[Axis, ...] = (Axis.x, Axis.y, Axis.z),
+    advection: bool = False,
 ) -> xr.Dataset:
     """Interpolate Oceananigans output velocities to use the same axes,
     uses periodic interpolation
@@ -221,6 +143,8 @@ def ocean_interp_per(
     periodic_axes : tuple[Axis, ...], optional
         Tuple of axes to interpolate as periodic (rather than extrapolate),
         by default (Axis.x, Axis.y, Axis.z)
+    advection : bool, optional
+        Whether dataset has arrays of advection as well as velocity
 
     Returns
     -------
@@ -246,74 +170,30 @@ def ocean_interp_per(
         .transpose("z_aac", "y_aca", "x_caa", transpose_coords=True)
     )
     wvar = splev(oc_input["z_aac"], w_interp, z_extrap).rename("w")
-
-    return xr.merge([uvar, vvar, wvar], compat="no_conflicts")
-
-
-def ocean_interp_adv_per(
-    oc_input: xr.Dataset,
-    time: int = -1,
-    periodic_axes: tuple[Axis, ...] = (Axis.x, Axis.y, Axis.z),
-) -> xr.Dataset:
-    """Interpolate Oceananigans output velocities and advection to use the same axes,
-    uses periodic interpolation
-
-    Parameters
-    ----------
-    oc_input : xr.Dataset
-        Oceananigans output NetCDF. Must be stored on CPU, interpolation does not work
-        with cupy-xarray.
-    time : int, optional
-        Index of desired timestep, by default -1
-    periodic_axes : tuple[Axis, ...], optional
-        Tuple of axes to interpolate as periodic (rather than extrapolate),
-        by default (Axis.x, Axis.y, Axis.z)
-
-    Returns
-    -------
-    xr.Dataset
-        Dataset with u,v,w,uadv,vadv,wadv on the same set of axes (cell centers)
-    """
-    u_interp = splrep(oc_input["u"].isel(time=time), "x_faa")
-    v_interp = splrep(oc_input["v"].isel(time=time), "y_afa")
-    w_interp = splrep(oc_input["w"].isel(time=time), "z_aaf")
-    uadv_interp = splrep(oc_input["uadv"].isel(time=time), "x_faa")
-    vadv_interp = splrep(oc_input["vadv"].isel(time=time), "x_faa")
-    wadv_interp = splrep(oc_input["wadv"].isel(time=time), "x_faa")
-
-    x_extrap = "periodic" if Axis.x in periodic_axes else True
-    y_extrap = "periodic" if Axis.y in periodic_axes else True
-    z_extrap = "periodic" if Axis.z in periodic_axes else True
-
-    uvar = (
-        splev(oc_input["x_caa"], u_interp, x_extrap)
-        .rename("u")
-        .transpose("z_aac", "y_aca", "x_caa", transpose_coords=True)
-    )
-    vvar = (
-        splev(oc_input["y_aca"], v_interp, y_extrap)
-        .rename("v")
-        .transpose("z_aac", "y_aca", "x_caa", transpose_coords=True)
-    )
-    wvar = splev(oc_input["z_aac"], w_interp, z_extrap).rename("w")
-
-    uadvvar = (
-        splev(oc_input["x_caa"], uadv_interp, x_extrap)
-        .rename("uadv")
-        .transpose("z_aac", "y_aca", "x_caa", transpose_coords=True)
-    )
-    vadvvar = (
-        splev(oc_input["x_caa"], vadv_interp, x_extrap)
-        .rename("vadv")
-        .transpose("z_aac", "y_aca", "x_caa", transpose_coords=True)
-    )
-    wadvvar = (
-        splev(oc_input["x_caa"], wadv_interp, x_extrap)
-        .rename("wadv")
-        .transpose("z_aac", "y_aca", "x_caa", transpose_coords=True)
-    )
-
-    return xr.merge([uvar, vvar, wvar, uadvvar, vadvvar, wadvvar], compat="no_conflicts")
+    if advection:
+        uadv_interp = splrep(oc_input["uadv"].isel(time=time), "x_faa")
+        vadv_interp = splrep(oc_input["vadv"].isel(time=time), "x_faa")
+        wadv_interp = splrep(oc_input["wadv"].isel(time=time), "x_faa")
+        uadvvar = (
+            splev(oc_input["x_caa"], uadv_interp, x_extrap)
+            .rename("uadv")
+            .transpose("z_aac", "y_aca", "x_caa", transpose_coords=True)
+        )
+        vadvvar = (
+            splev(oc_input["x_caa"], vadv_interp, x_extrap)
+            .rename("vadv")
+            .transpose("z_aac", "y_aca", "x_caa", transpose_coords=True)
+        )
+        wadvvar = (
+            splev(oc_input["x_caa"], wadv_interp, x_extrap)
+            .rename("wadv")
+            .transpose("z_aac", "y_aca", "x_caa", transpose_coords=True)
+        )
+        return xr.merge(
+            [uvar, vvar, wvar, uadvvar, vadvvar, wadvvar], compat="no_conflicts"
+        )
+    else:
+        return xr.merge([uvar, vvar, wvar], compat="no_conflicts")
 
 
 def sf_au_prop_xr(sf_tab: xr.Dataset) -> xr.Dataset:
@@ -348,3 +228,13 @@ def sf_prop_pd(sf_tab: xr.Dataset, sf_type: SFType) -> pd.DataFrame:
     pi = sf_au_prop_xr(sf_tab) if sf_type == SFType.Au else sf_lll_prop_xr(sf_tab)
     tab_short = pi.to_dataframe().reset_index()
     return tab_short.melt(id_vars=["time", "dr", "k"], value_name="ε", var_name="axis")
+
+
+def roll_da(ds: xr.DataArray, args: dict) -> xr.DataArray:
+    """Turns xarray roll into a separate function"""
+    return ds.roll(args)
+
+
+def shift_da(ds: xr.DataArray, args: dict) -> xr.DataArray:
+    """Turns xarray shift into a separate function"""
+    return ds.shift(args)

@@ -9,15 +9,7 @@ import xarray as xr
 from numba import njit, prange
 
 from .advection import advection_xr
-from .roll import roll_da, roll_numba, roll_par, shift_da
-from .utils import (
-    Axis,
-    GradMethod,
-    SimDataLite,
-    axis_name,
-    ndarray,
-    xp_fft,
-)
+from .utils import Axis, GradMethod, axis_name, ndarray, roll_da, shift_da, xp_fft
 
 
 @cp.fuse

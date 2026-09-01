@@ -7,8 +7,7 @@ import cupy_xarray
 import numpy as np
 import xarray as xr
 
-from .roll import roll_da, shift_da
-from .utils import Axis, axis_name, ndarray
+from .utils import Axis, axis_name, ndarray, roll_da, shift_da
 
 # steps:
 # set of motion amounts: can just use motion of i,j,k for range N//2, for periodic
