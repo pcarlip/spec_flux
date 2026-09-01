@@ -1,5 +1,5 @@
 [project]
-name = "spec-flux"
+name = "spectral_flux"
 version = "0.1.0"
 description = "Python tools for calculating spectral flux from fluid velocities"
 readme = "README.md"
