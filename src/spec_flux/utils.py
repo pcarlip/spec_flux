@@ -142,35 +142,34 @@ def xp_fft(array: ndarray) -> tuple[ModuleType, ModuleType]:
     return (xp, genfft)
 
 
-def spacings_krange(
-    data: SimData | SimDataLite,
-) -> tuple[tuple[float, float, float], tuple[ndarray, ndarray, ndarray]]:
-    """Get the realspace spacings and fourier-space ranges of k-values from the range of
-    x, y, and z values
+def krange_fft(
+    data: xr.Dataset, axes: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa")
+) -> tuple[ndarray, ndarray, ndarray]:
+    """Get the fourier-space ranges of k-values from the range of z, y, and x values
 
     Parameters
     ----------
-    data : SimData | SimDataLite
-        Dataclass containing grid axes
+    data : xr.Dataset
+        Dataset containing grid axes
+    axes : tuple[str, str, str]
+        Axis names in dataset; by default ("z_aac", "y_aca", "x_caa")
 
     Returns
     -------
-    tuple[float, float, float]
-        grid spacings in z, y, x (assumed to be constant, but not necessarily equal)
     tuple[ndarray, ndarray, ndarray]
         arrays of m, l, and k values of the fourier-transformed grids
     """
-    xp, genfft = xp_fft(data.u)
-    spacings = (data.z[1] - data.z[0], data.y[1] - data.y[0], data.x[1] - data.x[0])
+    _, genfft = xp_fft(data.u)
     ranges = []
     for i in range(3):
-        Ni = data.u.shape[i]
-        Li = Ni * spacings[i]
-        dk = 2 * xp.pi / Li
+        Ni = len(data[axes[i]])
+        spacing = data[axes[i]][1] - data[axes[i]][0]
+        Li = Ni * spacing
+        dk = 2 * np.pi / Li
         k_range = genfft.fftshift(genfft.fftfreq(Ni) * Ni * dk)
         ranges.append(k_range)
     ranges = tuple(ranges)
-    return (spacings, ranges)
+    return ranges
 
 
 def krange_int(model: xr.Dataset, n: int = 1000, log: bool = False) -> np.ndarray:

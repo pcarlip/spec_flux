@@ -6,10 +6,8 @@ import xarray as xr
 from .utils import (
     Axis,
     GradMethod,
-    SimData,
-    SimDataLite,
+    krange_fft,
     ndarray,
-    spacings_krange,
     xp_fft,
 )
 
@@ -82,7 +80,7 @@ def advection_xr(
         )
     else:
         xp, genfft = xp_fft(vel.data)
-        _, k_ranges = spacings_krange(SimDataLite.from_xr(data))
+        k_ranges = krange_fft(data)
         k_mesh = xp.meshgrid(*k_ranges, indexing="ij")
         vel_hat = genfft.fftshift(genfft.fftn(vel.data))
         adv = (
