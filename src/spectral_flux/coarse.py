@@ -14,6 +14,31 @@ def pi_cg_gauss_nd(
     axes: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa"),
     periodic: tuple[bool, ...] = (True, True, True),
 ) -> xr.DataArray:
+    """Estimate spectral flux via coarse-graining
+
+    Parameters
+    ----------
+    data : xr.Dataset
+        Dataset with 3 velocity components
+    k : float
+        Wavenumber at which to calculate spectral flux
+    skip_dims : tuple[str, ...], optional
+        Any dimensions of the velocity arrays not so smooth along, by default ("time",)
+    vel_names : tuple[str, str, str], optional
+        Names of velocity components, in any order, by default ("u", "v", "w")
+    axes : tuple[str, str, str], optional
+        Spatial axes of velocity components, in any order,
+        by default ("z_aac", "y_aca", "x_caa")
+    periodic : tuple[bool, ...], optional
+        Whether each smoothed axis is periodic,
+        in the order of the dimensions of the velocity components,
+        by default (True, True, True)
+
+    Returns
+    -------
+    xr.DataArray
+        Coarse-graining estimate of spectral flux at the specified wavenumber
+    """
 
     # <f(s)> = ∫dr G(r)f(s+r), for which I use "gaussian_filter"
     # τ_ij = <u_i u_j> - <u_i> <u_j>
@@ -54,14 +79,32 @@ def pi_cg_gauss_xr(
     axes: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa"),
     periodic: tuple[bool, bool, bool] = (True, True, True),
 ) -> xr.DataArray:
+    """A special case of `pi_cg_gauss_nd`, in which no spatial dimensions are skipped"""
     return pi_cg_gauss_nd(data, k, vel_names=vel_names, axes=axes, periodic=periodic)
 
 
-def pi_cg_lst_xr(data: xr.Dataset, k_cg: Iterable[float]) -> xr.DataArray:
-    return xr.concat([pi_cg_gauss_xr(data, k) for k in k_cg], "k")
+def pi_cg_lst_xr(
+    data: xr.Dataset,
+    k_cg: Iterable[float],
+    vel_names: tuple[str, str, str] = ("u", "v", "w"),
+    axes: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa"),
+    periodic: tuple[bool, bool, bool] = (True, True, True),
+) -> xr.DataArray:
+    """Run `pi_cg_gauss_xr` on a collection of several wavenumbers"""
+    return xr.concat(
+        [pi_cg_gauss_xr(data, k, vel_names, axes, periodic) for k in k_cg], "k"
+    )
 
 
 def pi_cg_lst_nd(
-    data: xr.Dataset, k_cg: Iterable[float], skip_dims: tuple[str, ...] = ("time",)
+    data: xr.Dataset,
+    k_cg: Iterable[float],
+    skip_dims: tuple[str, ...] = ("time",),
+    vel_names: tuple[str, str, str] = ("u", "v", "w"),
+    axes: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa"),
+    periodic: tuple[bool, bool, bool] = (True, True, True),
 ) -> xr.DataArray:
-    return xr.concat([pi_cg_gauss_nd(data, k, skip_dims) for k in k_cg], "k")
+    """Run `pi_cg_gauss_nd` on a collection of several wavenumbers"""
+    return xr.concat(
+        [pi_cg_gauss_nd(data, k, skip_dims, vel_names, axes, periodic) for k in k_cg], "k"
+    )
