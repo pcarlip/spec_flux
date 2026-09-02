@@ -23,10 +23,8 @@ def pi_cg_gauss_nd(
     smooth_axes = [data[vel_names[0]].dims.index(i) for i in smooth_dims]
 
     vels = tuple(data[i] for i in vel_names)
-    dz = float(data[axes[0]][1] - data[axes[0]][0])
-    dy = float(data[axes[1]][1] - data[axes[1]][0])
-    dx = float(data[axes[2]][1] - data[axes[2]][0])
-    size = ((1 / k) / dz, (1 / k) / dy, (1 / k) / dx)
+    dx = [float(data[axes[i]][1] - data[axes[i]][0]) for i in smooth_axes]
+    size = tuple((1 / k) / dxi for dxi in dx)
 
     modes = ["wrap" if i else "nearest" for i in periodic]
     gauss_kwargs = {"sigma": size, "mode": modes, "axes": smooth_axes}
