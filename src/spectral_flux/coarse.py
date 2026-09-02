@@ -31,7 +31,8 @@ def pi_cg_gauss_nd(
         by default ("z_aac", "y_aca", "x_caa")
     periodic : tuple[bool, ...], optional
         Whether each smoothed axis is periodic,
-        in the order of the dimensions of the velocity components,
+        in the order of the dimensions of the velocity components;
+        must be the same length as the list of smoothed axes.
         by default (True, True, True)
 
     Returns
@@ -102,7 +103,7 @@ def pi_cg_lst_nd(
     skip_dims: tuple[str, ...] = ("time",),
     vel_names: tuple[str, str, str] = ("u", "v", "w"),
     axes: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa"),
-    periodic: tuple[bool, bool, bool] = (True, True, True),
+    periodic: tuple[bool, ...] = (True, True, True),
 ) -> xr.DataArray:
     """Run `pi_cg_gauss_nd` on a collection of several wavenumbers"""
     return xr.concat(
