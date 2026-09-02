@@ -1,6 +1,6 @@
 [project]
 name = "spectral_flux"
-version = "0.2.1"
+version = "0.2.2"
 description = "Python tools for calculating spectral flux from fluid velocities"
 readme = "README.md"
 authors = [{ name = "pcarlip", email = "peter.carlip@proton.me" }]
@@ -43,10 +43,7 @@ xrft = { git = "https://github.com/pcarlip/xrft.git", branch = "cupy" }
 # will switch to main branch if my PR is accepted
 
 [dependency-groups]
-dev = [
-    "ipython>=9.17.1",
-    "ruff>=0.16.5",
-]
+dev = ["ipython>=9.17.1", "ruff>=0.16.5"]
 test = ["fluidsf>=0.2.2", "pytest>=9.1.1"]
 
 [tool.ruff]
