@@ -12,7 +12,7 @@ def pi_cg_gauss_nd(
     skip_dims: tuple[str, ...] = ("time",),
     vel_names: tuple[str, str, str] = ("u", "v", "w"),
     axes: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa"),
-    periodic: tuple[bool, ...] = (True, True, True),
+    periodic: tuple[bool, ...] | bool = True,
 ) -> xr.DataArray:
     """Estimate spectral flux via coarse-graining
 
@@ -29,11 +29,11 @@ def pi_cg_gauss_nd(
     axes : tuple[str, str, str], optional
         Spatial axes of velocity components, in any order,
         by default ("z_aac", "y_aca", "x_caa")
-    periodic : tuple[bool, ...], optional
-        Whether each smoothed axis is periodic,
-        in the order of the dimensions of the velocity components;
-        must be the same length as the list of smoothed axes.
-        by default (True, True, True)
+    periodic : tuple[bool, ...] | bool, optional
+        Whether each smoothed axis is periodic. If a tuple, must be the same length as
+        set of smoothed axes and match the order of the axes as dimensions of the
+        velocity DataArrays.
+        By default True
 
     Returns
     -------
@@ -52,7 +52,11 @@ def pi_cg_gauss_nd(
     dx = [float(data[axes[i]][1] - data[axes[i]][0]) for i in smooth_axes]
     size = tuple((1 / k) / dxi for dxi in dx)
 
-    modes = ["wrap" if i else "nearest" for i in periodic]
+    if isinstance(periodic, tuple):
+        periodic_dims = periodic
+    else:
+        periodic_dims = tuple(periodic for i in range(len(smooth_dims)))
+    modes = ["wrap" if i else "nearest" for i in periodic_dims]
     gauss_kwargs = {"sigma": size, "mode": modes, "axes": smooth_axes}
 
     smoothed_vels = [
@@ -78,7 +82,7 @@ def pi_cg_gauss_xr(
     k: float,
     vel_names: tuple[str, str, str] = ("u", "v", "w"),
     axes: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa"),
-    periodic: tuple[bool, bool, bool] = (True, True, True),
+    periodic: tuple[bool, bool, bool] | bool = True,
 ) -> xr.DataArray:
     """A special case of `pi_cg_gauss_nd`, in which no spatial dimensions are skipped"""
     return pi_cg_gauss_nd(data, k, vel_names=vel_names, axes=axes, periodic=periodic)
@@ -89,7 +93,7 @@ def pi_cg_lst_xr(
     k_cg: Iterable[float],
     vel_names: tuple[str, str, str] = ("u", "v", "w"),
     axes: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa"),
-    periodic: tuple[bool, bool, bool] = (True, True, True),
+    periodic: tuple[bool, bool, bool] | bool = True,
 ) -> xr.DataArray:
     """Run `pi_cg_gauss_xr` on a collection of several wavenumbers"""
     return xr.concat(
@@ -103,7 +107,7 @@ def pi_cg_lst_nd(
     skip_dims: tuple[str, ...] = ("time",),
     vel_names: tuple[str, str, str] = ("u", "v", "w"),
     axes: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa"),
-    periodic: tuple[bool, ...] = (True, True, True),
+    periodic: tuple[bool, ...] | bool = True,
 ) -> xr.DataArray:
     """Run `pi_cg_gauss_nd` on a collection of several wavenumbers"""
     return xr.concat(
