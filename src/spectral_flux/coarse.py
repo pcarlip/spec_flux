@@ -11,7 +11,7 @@ def pi_cg_gauss_nd(
     k: float,
     skip_dims: tuple[str, ...] = ("time",),
     vel_names: tuple[str, str, str] = ("u", "v", "w"),
-    axes: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa"),
+    axes: tuple[str, str, str] = ("x_caa", "y_aca", "z_aac"),
     periodic: tuple[bool, ...] | bool = True,
 ) -> xr.DataArray:
     """Estimate spectral flux via coarse-graining
@@ -28,7 +28,7 @@ def pi_cg_gauss_nd(
         Names of velocity components, in any order, by default ("u", "v", "w")
     axes : tuple[str, str, str], optional
         Spatial axes of velocity components, in any order,
-        by default ("z_aac", "y_aca", "x_caa")
+        by default ("x_caa", "y_aca", "z_aac")
     periodic : tuple[bool, ...] | bool, optional
         Whether each smoothed axis is periodic. If a tuple, must be the same length as
         set of smoothed axes and match the order of the axes as dimensions of the
@@ -81,7 +81,7 @@ def pi_cg_gauss_xr(
     data: xr.Dataset,
     k: float,
     vel_names: tuple[str, str, str] = ("u", "v", "w"),
-    axes: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa"),
+    axes: tuple[str, str, str] = ("x_caa", "y_aca", "z_aac"),
     periodic: tuple[bool, bool, bool] | bool = True,
 ) -> xr.DataArray:
     """A special case of `pi_cg_gauss_nd`, in which no spatial dimensions are skipped"""
@@ -92,7 +92,7 @@ def pi_cg_lst_xr(
     data: xr.Dataset,
     k_cg: Iterable[float],
     vel_names: tuple[str, str, str] = ("u", "v", "w"),
-    axes: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa"),
+    axes: tuple[str, str, str] = ("x_caa", "y_aca", "z_aac"),
     periodic: tuple[bool, bool, bool] | bool = True,
 ) -> xr.DataArray:
     """Run `pi_cg_gauss_xr` on a collection of several wavenumbers"""
@@ -106,7 +106,7 @@ def pi_cg_lst_nd(
     k_cg: Iterable[float],
     skip_dims: tuple[str, ...] = ("time",),
     vel_names: tuple[str, str, str] = ("u", "v", "w"),
-    axes: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa"),
+    axes: tuple[str, str, str] = ("x_caa", "y_aca", "z_aac"),
     periodic: tuple[bool, ...] | bool = True,
 ) -> xr.DataArray:
     """Run `pi_cg_gauss_nd` on a collection of several wavenumbers"""
