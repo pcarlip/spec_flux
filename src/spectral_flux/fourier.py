@@ -78,7 +78,29 @@ def fourier_prep_xr(
         return out
 
 
-def fourier_int_xr_lst(data: xr.Dataset) -> xr.DataArray:
+def fourier_int_xr(data: xr.Dataset, klim: float) -> xr.DataArray:
+    """Calculate spectral flux of energy dissipation through a fourier transform
+    at a specific wavenumber
+
+    Parameters
+    ----------
+    data : xr.Dataset
+        Dataset containing integrand, k magnitudes
+    klim : float
+        K value to integrate up to
+
+    Returns
+    -------
+    xr.DataArray
+        Spectral flux at klim
+    """
+    masked = data["pi_int"].where(data["k"] <= (klim / (2 * np.pi)) ** 2, 0.0)
+    val = masked.integrate(["freq_x_caa", "freq_y_aca", "freq_z_aac"])
+    num = np.real(val.item()) / data.L**3
+    return xr.DataArray(num, {"time": data.time, "k": klim})
+
+
+def fourier_int_xr_lst(data: xr.Dataset, k_lst: Iterable[float]) -> xr.DataArray:
     """Calculate spectral flux of energy dissipation through a fourier transform
     over a list of wavenumbers
 
@@ -94,7 +116,7 @@ def fourier_int_xr_lst(data: xr.Dataset) -> xr.DataArray:
     xr.DataArray
         Spectral flux as a function of k, at given k values
     """
-    return cumulative_simpson(data, coord="k").real / (data.L**3)  # type: ignore
+    return xr.concat([fourier_int_xr(data, k) for k in k_lst], "k")
 
 
 def van_atta_prep(
