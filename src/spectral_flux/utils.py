@@ -98,7 +98,9 @@ def krange_fft(
     return ranges
 
 
-def krange_int(model: xr.Dataset, n: int = 1000, log: bool = False) -> np.ndarray:
+def krange_int(
+    model: xr.Dataset, n: int = 1000, log: bool = False, trim: bool = False
+) -> np.ndarray:
     """Generate a reasonable range of k values from a netcdf model made in Oceananigans
 
     Parameters
@@ -109,6 +111,9 @@ def krange_int(model: xr.Dataset, n: int = 1000, log: bool = False) -> np.ndarra
         number of k values to include, by default 1000
     log : bool, optional
         return a logspace rather than a linspace, by default False
+    trim : bool, optional
+        Trim high k values, e.g. for preventing divergence in trig integrals
+        by default false
 
     Returns
     -------
@@ -118,7 +123,7 @@ def krange_int(model: xr.Dataset, n: int = 1000, log: bool = False) -> np.ndarra
     L = float(model["x_caa"][-1]) - float(model["x_caa"][0])
     size = len(model["x_caa"].values)
     kmin = np.pi / L
-    kmax = kmin * size * 2
+    kmax = (kmin * size * 2) if not trim else (kmin * size / 2.1)
     if log:
         return np.logspace(np.log10(kmin), np.log10(kmax), n)
     else:
