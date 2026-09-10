@@ -188,3 +188,41 @@ def lll_ax_trans(k: float, r: ndarray | xr.DataArray) -> np.typing.ArrayLike:
         transformation at each separation distance
     """
     return (np.sin(k * r) - k * r * np.cos(k * r)) * 5 / (2 * np.pi * r**2)
+
+
+def frisch_ax_trans(k: float, r: ndarray | xr.DataArray) -> np.typing.ArrayLike:
+    """Transformation for divergence of the 1d advective structure function,
+    \\frac{d}{dr} r*SF_{Au}(r)
+
+    Parameters
+    ----------
+    k : float
+        wavenumber
+    r : ndarray | xr.DataArray
+        range of separation distances
+
+    Returns
+    -------
+    np.typing.ArrayLike
+        transformation at each separation distance
+    """
+    return np.sin(k * r) / (np.pi * r)
+
+
+def frisch_full_trans(k: float, r: ndarray | xr.DataArray) -> np.typing.ArrayLike:
+    """Transformation for a divergence of the 3d advective structure function,
+    \\nabla\\cdot(SF_Au\\frac{\\vec{r}}{|r|^2})
+
+    Parameters
+    ----------
+    k : float
+        wavenumber
+    r : ndarray | xr.DataArray
+        range of separation distances
+
+    Returns
+    -------
+    np.typing.ArrayLike
+        transformation at each separation distance
+    """
+    return np.sin(k * r) / (4 * np.pi**2 * r)
