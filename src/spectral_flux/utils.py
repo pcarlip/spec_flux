@@ -121,9 +121,9 @@ def krange_int(
         Array of k values
     """
     L = float(model["x_caa"][-1]) - float(model["x_caa"][0])
-    size = len(model["x_caa"].values)
+    dx = float(model["x_caa"][1]) - float(model["x_caa"][0])
     kmin = np.pi / L
-    kmax = (kmin * size * 2) if not trim else (kmin * size / 2.1)
+    kmax = (2 * np.pi / dx) if not trim else 0.95 * (np.pi / dx)
     if log:
         return np.logspace(np.log10(kmin), np.log10(kmax), n)
     else:
