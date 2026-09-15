@@ -149,7 +149,7 @@ def sf_ln_dir_xr(
     axis_xr = data[ax_name]
     vel = (data["w"], data["v"], data["u"])[axis.value]
 
-    count = len(axis_xr) // 2
+    count = len(axis_xr) // 2 if periodic else len(axis_xr)
     diffs = axis_xr[:count] - axis_xr[0]
 
     roll_func = roll_da if periodic else shift_da

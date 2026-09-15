@@ -246,7 +246,7 @@ def sf_au_dir_xr(
 
     axis_xr = (z, y, x)[axis.value]
 
-    count = len(axis_xr) // 2
+    count = len(axis_xr) // 2 if periodic else len(axis_xr)
     diffs = axis_xr[:count] - axis_xr[0]
 
     uadv = advection_xr(data, Axis.x, grad_method)
