@@ -123,7 +123,7 @@ def krange_int(
     L = float(model["x_caa"][-1]) - float(model["x_caa"][0])
     dx = float(model["x_caa"][1]) - float(model["x_caa"][0])
     kmin = np.pi / L
-    kmax = (2 * np.pi / dx) if not trim else 0.95 * (np.pi / dx)
+    kmax = (2 * np.pi / dx) if not trim else 0.9 * (np.pi / dx)
     if log:
         return np.logspace(np.log10(kmin), np.log10(kmax), n)
     else:
