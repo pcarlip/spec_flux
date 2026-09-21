@@ -220,6 +220,7 @@ def sf_au_dir_xr(
     axis: Axis,
     grad_method: GradMethod = GradMethod.numpy,
     periodic: bool = True,
+    aperiodic_range: bool = True,
 ) -> xr.DataArray:
     """Get the advective structure function of an xarray dataset with all spacings along
     a specified axis
@@ -234,6 +235,9 @@ def sf_au_dir_xr(
         How to calculate derivatives for advection, by default GradMethod.numpy
     periodic : bool, optional
         Whether grid is periodic along the given axis, by default True
+    aperiodic_range : bool, optional
+        If not periodic, use spacings up to the full domain length rather than just half,
+        by default True
 
     Returns
     -------
@@ -246,7 +250,7 @@ def sf_au_dir_xr(
 
     axis_xr = (z, y, x)[axis.value]
 
-    count = len(axis_xr) // 2 if periodic else len(axis_xr)
+    count = len(axis_xr) if (not periodic and aperiodic_range) else len(axis_xr) // 2
     diffs = axis_xr[:count] - axis_xr[0]
 
     uadv = advection_xr(data, Axis.x, grad_method)
