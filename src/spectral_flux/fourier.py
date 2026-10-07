@@ -71,7 +71,13 @@ def fourier_prep_xr(
         + pi_int_dir_xr(data, Axis.z, grad_method, edge_order)
     ).rename("pi_int")
     k = (pi_int.freq_x_caa**2 + pi_int.freq_y_aca**2 + pi_int.freq_z_aac**2).rename("k")
-    out = xr.merge([pi_int, k]).assign_attrs({"L": data.x_caa[-1] - data.x_caa[0]})
+    out = xr.merge([pi_int, k]).assign_attrs(
+        {
+            "Lx": data.x_caa[-1] - data.x_caa[0],
+            "Ly": data.y_aca[-1] - data.y_aca[0],
+            "Lz": data.z_aac[-1] - data.z_aac[0],
+        }
+    )
     if pi_int.cupy.is_cupy:
         return out.as_cupy()
     else:
@@ -96,7 +102,7 @@ def fourier_int_xr(data: xr.Dataset, klim: float) -> xr.DataArray:
     """
     masked = data["pi_int"].where(data["k"] <= (klim / (2 * np.pi)) ** 2, 0.0)
     val = masked.integrate(["freq_x_caa", "freq_y_aca", "freq_z_aac"])
-    num = np.real(val.item()) / data.L**3
+    num = np.real(val.item()) / (data.Lx * data.Ly * data.Lz)
     return xr.DataArray(num, {"time": data.time, "k": klim})
 
 
