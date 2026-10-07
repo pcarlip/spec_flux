@@ -216,6 +216,26 @@ def sf_lll_prop_xr(sf_tab: xr.Dataset) -> xr.Dataset:
     return xr.merge([pi_lll_x, pi_lll_y, pi_lll_z], compat="no_conflicts")  # type: ignore
 
 
+def prop_pd_gen(pi: xr.Dataset, id_vars: tuple[str, ...] = ("time", "k")) -> pd.DataFrame:
+    """Turn a generic directional spectral flux dataset into a dataframe suitable for
+    plotting with sns
+
+    Parameters
+    ----------
+    pi : xr.Dataset
+        Spectral flux estimate; data arrays must be named to indicate axis
+    id_vars : tuple[str, ...], optional
+        variables to not "melt" along, by default ("time", "k")
+
+    Returns
+    -------
+    pd.DataFrame
+        Long df with spectral flux vs separation and axis
+    """
+    tab_short = pi.to_dataframe().reset_index()
+    return tab_short.melt(id_vars=id_vars, value_name="ε", var_name="axis")
+
+
 def sf_prop_pd(sf_tab: xr.Dataset, sf_type: SFType) -> pd.DataFrame:
     """Turn a structure function dataset into a dataframe suitable for plotting with sns
 
@@ -229,11 +249,10 @@ def sf_prop_pd(sf_tab: xr.Dataset, sf_type: SFType) -> pd.DataFrame:
     Returns
     -------
     pd.DataFrame
-        Long df with estimated spectral flux vs separation
+        Long df with estimated spectral flux vs separation and axis
     """
     pi = sf_au_prop_xr(sf_tab) if sf_type == SFType.Au else sf_lll_prop_xr(sf_tab)
-    tab_short = pi.to_dataframe().reset_index()
-    return tab_short.melt(id_vars=["time", "dr", "k"], value_name="ε", var_name="axis")
+    return prop_pd_gen(pi, ("time", "dr", "k"))
 
 
 def roll_da(ds: xr.DataArray, args: dict) -> xr.DataArray:
