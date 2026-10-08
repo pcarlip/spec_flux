@@ -1,5 +1,8 @@
+[![DOI](https://zenodo.org/badge/1353150241.svg)](https://doi.org/10.5281/zenodo.23250619)
+
 # spec_flux
-Python tools for calculating spectral flux from fluid velocities
+Python tools for calculating spectral flux from fluid velocities. Many currently implicitly assume data from 
+[Oceananigans.jl](https://github.com/CliMA/Oceananigans.jl), though I am working to improve that.
 
 ## Installation
 
