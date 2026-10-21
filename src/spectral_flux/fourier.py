@@ -125,10 +125,10 @@ def fourier_int_xr_lst(data: xr.Dataset, k_lst: Iterable[float]) -> xr.DataArray
     return xr.concat([fourier_int_xr(data, k) for k in k_lst], "k")
 
 
-def van_atta_prep(
+def cor3(
     data: xr.Dataset, cor_ax: Axis, vel_ax: Axis, periodic: bool = True
 ) -> xr.DataArray:
-    """Triple product calculation of transfer function using Van Atta and Chen (1969)
+    """Triple product calculation used for transfer function
     velocities are assumed to be: u along x_caa, v along y_aca, w along z_aac
 
     Parameters
@@ -146,7 +146,7 @@ def van_atta_prep(
     Returns
     -------
     xr.DataArray
-        transfer function as a function of k
+        third order 2-point correlation
     """
     cor_ax_name = axis_name(cor_ax)
     cor_ax_xr = data[cor_ax_name]
@@ -176,9 +176,64 @@ def van_atta_prep(
             "r",
         )
     si1i = 0.5 * (si1i - si1i.isel(r=slice(None, None, -1)).data)
+    return si1i
+
+
+def van_atta_prep(
+    data: xr.Dataset, cor_ax: Axis, vel_ax: Axis, periodic: bool = True
+) -> xr.DataArray:
+    """Triple product calculation of transfer function using Van Atta and Chen (1969)
+    velocities are assumed to be: u along x_caa, v along y_aca, w along z_aac
+
+    Parameters
+    ----------
+    data : xr.Dataset
+        n-dimensional velocity data in all directions, must include the cor_ax
+        but need not include other dimensions
+    cor_ax : Axis
+        axis along which to take the correlations
+    vel_ax : Axis
+        second axis from which to use velocities (may be the same as cor_ax)
+    periodic : bool
+        whether to rotate (if periodic) or shift (if not) the velocities along cor_ax
+
+    Returns
+    -------
+    xr.DataArray
+        transfer function as a function of k
+    """
+    si1i = cor3(data, cor_ax, vel_ax, periodic)
     l1 = xrft.fft(si1i, dim="r", real_dim="r").as_numpy()
     l1 = l1.assign_coords(k=("freq_r", l1["freq_r"].data * 2 * np.pi))
     l1 = l1 * 1j * l1["k"] / (2 * np.pi)
+    return 4 * l1 - 2 * l1["k"] * l1.differentiate("k")
+
+
+def van_atta_prep_long(data: xr.Dataset, ax: Axis, periodic: bool = True) -> xr.DataArray:
+    """Triple product calculation of transfer function using Van Atta and Chen (1969)
+    from a single velocity component
+    velocities are assumed to be: u along x_caa, v along y_aca, w along z_aac
+
+    Parameters
+    ----------
+    data : xr.Dataset
+        n-dimensional velocity data in all directions, must include the cor_ax
+        but need not include other dimensions
+    ax : Axis
+        axis associated with velocity components and correlations
+    periodic : bool
+        whether to rotate (if periodic) or shift (if not) the velocities
+
+    Returns
+    -------
+    xr.DataArray
+        transfer function as a function of k
+    """
+    s111 = cor3(data, ax, ax, periodic)
+    s111_fft = xrft.fft(s111, dim="r", real_dim="r").as_numpy()
+    s111_fft = s111_fft.assign_coords(k=("freq_r", s111_fft["freq_r"].data * 2 * np.pi))
+    sn1n_fft = (3 / 2) * s111_fft - (1 / 2) * s111_fft.k * s111_fft.differentiate("k")
+    l1 = sn1n_fft * 1j * sn1n_fft["k"] / (2 * np.pi)
     return 4 * l1 - 2 * l1["k"] * l1.differentiate("k")
 
 
