@@ -175,6 +175,8 @@ def cor3(
             ],
             "r",
         )
+        N = len(si1i.r)
+        si1i = si1i.isel(r=slice(N // 4, 3 * N // 4))
     si1i = 0.5 * (si1i - si1i.isel(r=slice(None, None, -1)).data)
     return si1i
 
