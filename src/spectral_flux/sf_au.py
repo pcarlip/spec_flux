@@ -83,7 +83,8 @@ def sf_au_nd(
     spacing_enum = product(*[range(len(i)) for i in spacing_lsts])
     # I'm not sure what the *[] does here, but it's apparently necessary
 
-    diffs = [data[dims[i]][spacing_lsts[i]] - data[dims[i]][0] for i in range(ndim)]
+    dxi = [float(data[dim][1] - data[dim][0]) for dim in dims]
+    diffs = [np.array(spacing_lsts[i]) * dxi[i] for i in range(ndim)]
 
     adv_lst: list[xr.DataArray] = []
     for i in range(ndim):
@@ -100,7 +101,8 @@ def sf_au_nd(
 
     for inds, ninds in zip(spacing_comb, spacing_enum, strict=True):
         sf_arr = xp.zeros_like(vel_data[0])
-        if debug_print and ninds[0] % 5 == 0:
+        debug_itr = (ninds[0] % 5 == 0) and all(ninds[i] == 0 for i in range(1, ndim))
+        if debug_print and debug_itr:
             print(ninds[0], flush=True)
             print(time.ctime(), flush=True)
         for i in range(ndim):

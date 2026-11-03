@@ -99,7 +99,8 @@ def sf_ln_nd(
     spacing_enum = product(*[range(len(i)) for i in spacing_lsts])
     # I'm not sure what the *[] does here, but it's apparently necessary
 
-    diffs = [data[dims[i]][spacing_lsts[i]] - data[dims[i]][0] for i in range(ndim)]
+    dxi = [float(data[dim][1] - data[dim][0]) for dim in dims]
+    diffs = [np.array(spacing_lsts[i]) * dxi[i] for i in range(ndim)]
 
     vel_data = [data[vel].transpose(*dims).data for vel in vels]
 
@@ -107,6 +108,10 @@ def sf_ln_nd(
     out = xp.zeros([len(i) for i in spacing_lsts])
 
     for inds, ninds in zip(spacing_comb, spacing_enum, strict=True):
+        debug_itr = (ninds[0] % 5 == 0) and all(ninds[i] == 0 for i in range(1, ndim))
+        if debug_print and debug_itr:
+            print(ninds[0], flush=True)
+            print(time.ctime(), flush=True)
         sf_arr = xp.zeros_like(vel_data[0])
         r = np.sqrt(sum([ind**2 for ind in inds]))
         if r != 0:
