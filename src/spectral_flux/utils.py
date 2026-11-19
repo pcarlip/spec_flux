@@ -46,40 +46,6 @@ def _genfft(array: ndarray) -> ModuleType:
     return csp.get_array_module(array).fft
 
 
-def _krange_fft(
-    data: xr.Dataset, axes: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa")
-) -> tuple[ndarray, ...]:
-    """Get the fourier-space ranges of k-values from the range of z, y, and x values
-
-    Parameters
-    ----------
-    data : xr.Dataset
-        Dataset containing grid axes
-    axes : tuple[str, str, str], optional
-        Axis names in dataset; by default ("z_aac", "y_aca", "x_caa")
-
-    Returns
-    -------
-    tuple[ndarray, ndarray, ndarray]
-        arrays of m, l, and k values of the fourier-transformed grids
-    """
-    genfft = _genfft(data.u.data)
-    ranges: list[ndarray] = []
-    for ax in axes:
-        ds_ax = data[ax]
-        Ni = len(ds_ax)
-        spacing = float(ds_ax[1] - ds_ax[0])
-        Li = Ni * spacing
-        dk = 2 * np.pi / Li
-        k_range: ndarray = genfft.fftshift(genfft.fftfreq(Ni) * Ni * dk)
-        if data.cupy.is_cupy:
-            # not sure why I need this check given genfft, but it breaks without it
-            k_range = cp.array(k_range)
-        ranges.append(k_range)
-    ranges_t = tuple(ranges)
-    return ranges_t
-
-
 def krange_int(
     model: xr.Dataset, n: int = 1000, log: bool = False, trim: bool = False
 ) -> np.ndarray:

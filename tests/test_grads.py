@@ -5,7 +5,7 @@ from cupyx.scipy import fft as cufft
 from scipy import fft
 
 from spectral_flux.advection import spectral_der
-from spectral_flux.utils import Axis, _krange_fft
+from spectral_flux.utils import Axis
 
 
 def test_spec_grad() -> None:

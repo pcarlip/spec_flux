@@ -1,22 +1,54 @@
 from typing import Literal
 
+import cupy as cp
 import cupy_xarray
+import numpy as np
 import xarray as xr
+from scipy import fft
 
 from .utils import (
     Axis,
     GradMethod,
     _genfft,
-    _krange_fft,
     _xp,
     ndarray,
 )
+
+
+def _krange_fft(
+    axes: tuple[xr.DataArray, ...], cupy: bool = False
+) -> tuple[ndarray, ...]:
+    """Get the fourier-space ranges of k-values from the range of axis values
+
+    Parameters
+    ----------
+    axes : tuple[xr.DataArray, ...]
+        Array objects representing axes
+
+    Returns
+    -------
+    tuple[ndarray, ...]
+        arrays of m, l, and k values of the fourier-transformed grids
+    """
+    ranges: list[ndarray] = []
+    for ds_ax in axes:
+        Ni = len(ds_ax)
+        spacing = float(ds_ax[1] - ds_ax[0])
+        Li = Ni * spacing
+        dk = 2 * np.pi / Li
+        k_range: ndarray = fft.fftshift(fft.fftfreq(Ni) * Ni * dk)
+        if cupy:
+            k_range = cp.array(k_range)
+        ranges.append(k_range)
+    ranges_t = tuple(ranges)
+    return ranges_t
 
 
 def spectral_der(
     vel: xr.DataArray,
     ds: xr.Dataset,
     der_ax: Axis,
+    ax_names: tuple[str, ...] = ("z_aac", "y_aca", "x_caa"),
 ) -> ndarray:
     """Compute the derivative of a velocity field through its Fourier transform
 
@@ -36,7 +68,8 @@ def spectral_der(
     """
     xp = _xp(vel.data)
     genfft = _genfft(vel.data)
-    k_ranges = _krange_fft(ds)
+    axes = tuple([ds[i] for i in ax_names])
+    k_ranges = _krange_fft(axes, ds.cupy.is_cupy)
     k_mesh: tuple[ndarray, ndarray, ndarray] = xp.meshgrid(*k_ranges, indexing="ij")
     vel_hat: ndarray = genfft.fftshift(genfft.fftn(vel.data))
     return xp.real(genfft.ifftn(genfft.ifftshift(1j * k_mesh[der_ax.value] * vel_hat)))
