@@ -8,11 +8,11 @@ import numpy as np
 import xarray as xr
 
 from .advection import advection_xr
-from .utils import Axis, GradMethod, axis_name, ndarray, roll_da, shift_da
+from .utils import Axis, GradMethod, _roll_da, _shift_da, axis_name, ndarray
 
 
 @cp.fuse
-def sf_au_kernel(
+def _sf_au_kernel(
     du: ndarray,
     dv: ndarray,
     dw: ndarray,
@@ -97,7 +97,7 @@ def sf_au_nd(
     adv_data = [adv_lst[i].transpose(*dims).data for i in range(ndim)]
 
     xp = cp.get_array_module(vel_data[0])
-    out = xp.zeros([len(i) for i in spacing_lsts])
+    out: ndarray = xp.zeros([len(i) for i in spacing_lsts])
 
     for inds, ninds in zip(spacing_comb, spacing_enum, strict=True):
         sf_arr = xp.zeros_like(vel_data[0])
@@ -208,7 +208,7 @@ def sf_au_xr(
                 dau = xp.roll(uadv, (-i, -j, -k), axis=(0, 1, 2)) - uadv
                 dav = xp.roll(vadv, (-i, -j, -k), axis=(0, 1, 2)) - vadv
                 daw = xp.roll(wadv, (-i, -j, -k), axis=(0, 1, 2)) - wadv
-                out[ni, nj, nk] = xp.mean(sf_au_kernel(du, dv, dw, dau, dav, daw))
+                out[ni, nj, nk] = xp.mean(_sf_au_kernel(du, dv, dw, dau, dav, daw))
 
     return xr.DataArray(
         out,
@@ -263,7 +263,7 @@ def sf_au_dir_xr(
 
     au_lst = []
 
-    roll_func = roll_da if periodic else shift_da
+    roll_func = _roll_da if periodic else _shift_da
 
     for i in range(count):
         roll: Mapping[Hashable, int] = {ax_name: -i}

@@ -7,7 +7,7 @@ import cupy_xarray
 import numpy as np
 import xarray as xr
 
-from .utils import Axis, axis_name, ndarray, roll_da, shift_da
+from .utils import Axis, _roll_da, _shift_da, axis_name, ndarray
 
 # steps:
 # set of motion amounts: can just use motion of i,j,k for range N//2, for periodic
@@ -105,7 +105,7 @@ def sf_ln_nd(
     vel_data = [data[vel].transpose(*dims).data for vel in vels]
 
     xp = cp.get_array_module(vel_data[0])
-    out = xp.zeros([len(i) for i in spacing_lsts])
+    out: ndarray = xp.zeros([len(i) for i in spacing_lsts])
 
     for inds, ninds in zip(spacing_comb, spacing_enum, strict=True):
         debug_itr = (ninds[0] % 5 == 0) and all(ninds[i] == 0 for i in range(1, ndim))
@@ -118,7 +118,7 @@ def sf_ln_nd(
             for i in range(ndim):
                 du = vel_data[i] - xp.roll(vel_data[i], inds, range(ndim))
                 sf_arr += du * inds[i] / r
-            out[ninds] = xp.mean(sf_arr**order)  # type: ignore
+            out[ninds] = xp.mean(sf_arr**order)
 
     return xr.DataArray(
         out,
@@ -164,7 +164,7 @@ def sf_ln_dir_xr(
     count = len(axis_xr) if (not periodic and aperiodic_range) else len(axis_xr) // 2
     diffs = axis_xr[:count] - axis_xr[0]
 
-    roll_func = roll_da if periodic else shift_da
+    roll_func = _roll_da if periodic else _shift_da
 
     ln_lst = [
         (

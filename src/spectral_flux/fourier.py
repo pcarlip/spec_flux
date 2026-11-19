@@ -40,7 +40,7 @@ def pi_int_dir_xr(
     adv_realspace = advection_xr(data, axis, method, edge_order=edge_order)
     vel_hat = np.conj(xrft.fft(vel, dim=["x_caa", "y_aca", "z_aac"]))
     adv_spec = xrft.fft(adv_realspace, dim=["x_caa", "y_aca", "z_aac"])
-    return np.conj(adv_spec * vel_hat)  # type: ignore
+    return np.conj(adv_spec * vel_hat)
 
 
 def fourier_prep_xr(
@@ -254,7 +254,7 @@ def van_atta_int(data: xr.DataArray, mean_axes: Collection[str]) -> xr.DataArray
     xr.DataArray
         Estimated spectral flux
     """
-    out: xr.DataArray = cumulative_simpson(data, coord="k")  # type: ignore
+    out: xr.DataArray = cumulative_simpson(data, coord="k")
     mean = out.isel(freq_r=slice(None, -1)).mean(mean_axes).real
     norm = mean - mean.isel(freq_r=-1)
     return norm.assign_coords(k=("freq_r", mean["freq_r"].data * 2 * np.pi))
