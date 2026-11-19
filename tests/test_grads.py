@@ -1,9 +1,11 @@
 import cupy as cp
 import numpy as np
 import xarray as xr
+from cupyx.scipy import fft as cufft
+from scipy import fft
 
-from spectral_flux.advection import spectral_der
-from spectral_flux.utils import krange_fft, xp_fft
+from spectral_flux.advection import _spectral_der
+from spectral_flux.utils import _krange_fft
 
 
 def test_spec_grad() -> None:
@@ -14,12 +16,12 @@ def test_spec_grad() -> None:
     y = np.arange(M)
     z = np.arange(L)
     frac = 0.75  # note: this improves w/ larger grids
-    xp, genfft = xp_fft(x)
-    grid = xp.meshgrid(z, y, x, indexing="ij")
+
+    grid = np.meshgrid(z, y, x, indexing="ij")
     u = (
-        xp.sin(grid[0] * np.pi / L)
-        * xp.sin(grid[1] * np.pi / M)
-        * xp.sin(grid[2] * np.pi / N)
+        np.sin(grid[0] * np.pi / L)
+        * np.sin(grid[1] * np.pi / M)
+        * np.sin(grid[2] * np.pi / N)
     )
     dims = ("z_aac", "y_aca", "x_caa")
     data = xr.Dataset(
@@ -27,13 +29,13 @@ def test_spec_grad() -> None:
         coords={"z_aac": z, "y_aca": y, "x_caa": x},
     )
 
-    k_ranges = krange_fft(data)
+    k_ranges = _krange_fft(data)
     k_mesh = np.meshgrid(*k_ranges, indexing="ij")
-    u_hat = genfft.fftshift(genfft.fftn(u))
+    u_hat = fft.fftshift(fft.fftn(u))
 
-    dudx_spec = spectral_der(u_hat, k_mesh[2])
-    dudy_spec = spectral_der(u_hat, k_mesh[1])
-    dudz_spec = spectral_der(u_hat, k_mesh[0])
+    dudx_spec = _spectral_der(u_hat, k_mesh[2])
+    dudy_spec = _spectral_der(u_hat, k_mesh[1])
+    dudz_spec = _spectral_der(u_hat, k_mesh[0])
     dudx_np = data.u.differentiate("x_caa", 2)
     dudy_np = data.u.differentiate("y_aca", 2)
     dudz_np = data.u.differentiate("z_aac", 2)
@@ -60,12 +62,12 @@ def test_spec_grad_cp() -> None:
     y = cp.arange(M)
     z = cp.arange(L)
     frac = 0.9
-    xp, genfft = xp_fft(x)
-    grid = xp.meshgrid(z, y, x, indexing="ij")  # type: ignore
+
+    grid = cp.meshgrid(z, y, x, indexing="ij")
     u = (
-        xp.sin(grid[0] * np.pi / L)
-        * xp.sin(grid[1] * np.pi / M)
-        * xp.sin(grid[2] * np.pi / N)
+        cp.sin(grid[0] * np.pi / L)
+        * cp.sin(grid[1] * np.pi / M)
+        * cp.sin(grid[2] * np.pi / N)
     )
     dims = ("z_aac", "y_aca", "x_caa")
     data = xr.Dataset(
@@ -73,13 +75,13 @@ def test_spec_grad_cp() -> None:
         coords={"z_aac": z, "y_aca": y, "x_caa": x},
     ).cupy.as_cupy()
 
-    k_ranges = krange_fft(data)
-    k_mesh = xp.meshgrid(*k_ranges, indexing="ij")
-    u_hat = genfft.fftshift(genfft.fftn(u))
+    k_ranges = _krange_fft(data)
+    k_mesh = cp.meshgrid(*k_ranges, indexing="ij")
+    u_hat = cufft.fftshift(cufft.fftn(u))
 
-    dudx_spec = spectral_der(u_hat, k_mesh[2])
-    dudy_spec = spectral_der(u_hat, k_mesh[1])
-    dudz_spec = spectral_der(u_hat, k_mesh[0])
+    dudx_spec = _spectral_der(u_hat, k_mesh[2])
+    dudy_spec = _spectral_der(u_hat, k_mesh[1])
+    dudz_spec = _spectral_der(u_hat, k_mesh[0])
     dudx_np = data.u.differentiate("x_caa", 2)
     dudy_np = data.u.differentiate("y_aca", 2)
     dudz_np = data.u.differentiate("z_aac", 2)
