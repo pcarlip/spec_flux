@@ -2,7 +2,7 @@ from enum import Enum, StrEnum
 from types import ModuleType
 
 import cupy as cp
-import cupyx
+import cupyx.scipy as csp
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -12,9 +12,9 @@ type ndarray = np.ndarray | cp.ndarray  # noqa: PYI042
 
 
 class GradMethod(Enum):
-    precalc = 1
-    spectral = 2
-    numpy = 3
+    precalc = 0
+    spectral = 1
+    numpy = 2
 
 
 class Axis(Enum):
@@ -33,40 +33,22 @@ def axis_name(ax: Axis) -> str:
         return "z_aac"
 
 
-class StrAxis(StrEnum):
-    x = "x"
-    y = "y"
-    z = "z"
-
-
 class SFType(StrEnum):
     Au = "Au"
     LLL = "LLL"
 
 
-def xp_fft(array: ndarray) -> tuple[ModuleType, ModuleType]:
-    """Choose the correct array and fft modules for a given array
-
-    Parameters
-    ----------
-    array : ndarray
-        Input array to type
-
-    Returns
-    -------
-    ModuleType
-        numpy or cupy
-    ModuleType
-        scipy.fft or cupyx.scipy.fft
-    """
-    xp = cp.get_array_module(array)
-    genfft = cupyx.scipy.get_array_module(array).fft
-    return (xp, genfft)
+def _xp(array: ndarray) -> ModuleType:
+    return cp.get_array_module(array)
 
 
-def krange_fft(
+def _genfft(array: ndarray) -> ModuleType:
+    return csp.get_array_module(array).fft
+
+
+def _krange_fft(
     data: xr.Dataset, axes: tuple[str, str, str] = ("z_aac", "y_aca", "x_caa")
-) -> tuple[ndarray, ndarray, ndarray]:
+) -> tuple[ndarray, ...]:
     """Get the fourier-space ranges of k-values from the range of z, y, and x values
 
     Parameters
@@ -81,21 +63,21 @@ def krange_fft(
     tuple[ndarray, ndarray, ndarray]
         arrays of m, l, and k values of the fourier-transformed grids
     """
-    _, genfft = xp_fft(data.u)
-    ranges = []
+    genfft = _genfft(data.u.data)
+    ranges: list[ndarray] = []
     for ax in axes:
         ds_ax = data[ax]
         Ni = len(ds_ax)
         spacing = float(ds_ax[1] - ds_ax[0])
         Li = Ni * spacing
         dk = 2 * np.pi / Li
-        k_range = genfft.fftshift(genfft.fftfreq(Ni) * Ni * dk)
+        k_range: ndarray = genfft.fftshift(genfft.fftfreq(Ni) * Ni * dk)
         if data.cupy.is_cupy:
             # not sure why I need this check given genfft, but it breaks without it
             k_range = cp.array(k_range)
         ranges.append(k_range)
-    ranges = tuple(ranges)
-    return ranges
+    ranges_t = tuple(ranges)
+    return ranges_t
 
 
 def krange_int(
@@ -202,21 +184,23 @@ def ocean_interp_per(
         return xr.merge([uvar, vvar, wvar], compat="no_conflicts")
 
 
-def sf_au_prop_xr(sf_tab: xr.Dataset) -> xr.Dataset:
+def _sf_au_prop_xr(sf_tab: xr.Dataset) -> xr.Dataset:
     pi_au_x = (-sf_tab.SF_Au_x / 2).rename("x")
     pi_au_y = (-sf_tab.SF_Au_y / 2).rename("y")
     pi_au_z = (-sf_tab.SF_Au_z / 2).rename("z")
-    return xr.merge([pi_au_x, pi_au_y, pi_au_z], compat="no_conflicts")  # type: ignore
+    return xr.merge([pi_au_x, pi_au_y, pi_au_z], compat="no_conflicts")
 
 
-def sf_lll_prop_xr(sf_tab: xr.Dataset) -> xr.Dataset:
+def _sf_lll_prop_xr(sf_tab: xr.Dataset) -> xr.Dataset:
     pi_lll_x = (-sf_tab.SF_LLL_x * 5 / (sf_tab.SF_LLL_x.dr * 4)).rename("x")
     pi_lll_y = (-sf_tab.SF_LLL_y * 5 / (sf_tab.SF_LLL_y.dr * 4)).rename("y")
     pi_lll_z = (-sf_tab.SF_LLL_z * 5 / (sf_tab.SF_LLL_z.dr * 4)).rename("z")
-    return xr.merge([pi_lll_x, pi_lll_y, pi_lll_z], compat="no_conflicts")  # type: ignore
+    return xr.merge([pi_lll_x, pi_lll_y, pi_lll_z], compat="no_conflicts")
 
 
-def prop_pd_gen(pi: xr.Dataset, id_vars: tuple[str, ...] = ("time", "k")) -> pd.DataFrame:
+def _prop_pd_gen(
+    pi: xr.Dataset, id_vars: tuple[str, ...] = ("time", "k")
+) -> pd.DataFrame:
     """Turn a generic directional spectral flux dataset into a dataframe suitable for
     plotting with sns
 
@@ -251,15 +235,15 @@ def sf_prop_pd(sf_tab: xr.Dataset, sf_type: SFType) -> pd.DataFrame:
     pd.DataFrame
         Long df with estimated spectral flux vs separation and axis
     """
-    pi = sf_au_prop_xr(sf_tab) if sf_type == SFType.Au else sf_lll_prop_xr(sf_tab)
-    return prop_pd_gen(pi, ("time", "dr", "k"))
+    pi = _sf_au_prop_xr(sf_tab) if sf_type == SFType.Au else _sf_lll_prop_xr(sf_tab)
+    return _prop_pd_gen(pi, ("time", "dr", "k"))
 
 
-def roll_da(ds: xr.DataArray, args: dict) -> xr.DataArray:
+def _roll_da(ds: xr.DataArray, args: dict) -> xr.DataArray:
     """Turns xarray roll into a separate function"""
     return ds.roll(args)
 
 
-def shift_da(ds: xr.DataArray, args: dict) -> xr.DataArray:
+def _shift_da(ds: xr.DataArray, args: dict) -> xr.DataArray:
     """Turns xarray shift into a separate function"""
     return ds.shift(args)
