@@ -4,8 +4,8 @@ import xarray as xr
 from cupyx.scipy import fft as cufft
 from scipy import fft
 
-from spectral_flux.advection import _spectral_der
-from spectral_flux.utils import _krange_fft
+from spectral_flux.advection import spectral_der
+from spectral_flux.utils import Axis, _krange_fft
 
 
 def test_spec_grad() -> None:
@@ -29,13 +29,9 @@ def test_spec_grad() -> None:
         coords={"z_aac": z, "y_aca": y, "x_caa": x},
     )
 
-    k_ranges = _krange_fft(data)
-    k_mesh = np.meshgrid(*k_ranges, indexing="ij")
-    u_hat = fft.fftshift(fft.fftn(u))
-
-    dudx_spec = _spectral_der(u_hat, k_mesh[2])
-    dudy_spec = _spectral_der(u_hat, k_mesh[1])
-    dudz_spec = _spectral_der(u_hat, k_mesh[0])
+    dudx_spec = spectral_der(data.u, data, Axis.x)
+    dudy_spec = spectral_der(data.u, data, Axis.y)
+    dudz_spec = spectral_der(data.u, data, Axis.z)
     dudx_np = data.u.differentiate("x_caa", 2)
     dudy_np = data.u.differentiate("y_aca", 2)
     dudz_np = data.u.differentiate("z_aac", 2)
@@ -75,13 +71,9 @@ def test_spec_grad_cp() -> None:
         coords={"z_aac": z, "y_aca": y, "x_caa": x},
     ).cupy.as_cupy()
 
-    k_ranges = _krange_fft(data)
-    k_mesh = cp.meshgrid(*k_ranges, indexing="ij")
-    u_hat = cufft.fftshift(cufft.fftn(u))
-
-    dudx_spec = _spectral_der(u_hat, k_mesh[2])
-    dudy_spec = _spectral_der(u_hat, k_mesh[1])
-    dudz_spec = _spectral_der(u_hat, k_mesh[0])
+    dudx_spec = spectral_der(data.u, data, Axis.x)
+    dudy_spec = spectral_der(data.u, data, Axis.y)
+    dudz_spec = spectral_der(data.u, data, Axis.z)
     dudx_np = data.u.differentiate("x_caa", 2)
     dudy_np = data.u.differentiate("y_aca", 2)
     dudz_np = data.u.differentiate("z_aac", 2)

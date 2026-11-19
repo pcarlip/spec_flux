@@ -6,29 +6,40 @@ import xarray as xr
 from .utils import (
     Axis,
     GradMethod,
-    krange_fft,
+    _genfft,
+    _krange_fft,
+    _xp,
     ndarray,
-    xp_fft,
 )
 
 
-def spectral_der(vel_hat: ndarray, k_grid: ndarray) -> ndarray:
-    """Approximate dv/dx as IFT(ik FT(v)), with cupy acceleration
+def spectral_der(
+    vel: xr.DataArray,
+    ds: xr.Dataset,
+    der_ax: Axis,
+) -> ndarray:
+    """Compute the derivative of a velocity field through its Fourier transform
 
     Parameters
     ----------
-    vel_hat : np.ndarray | cp.ndarray
-        Fourier transform of a velocity component
-    k_grid : np.ndarray | cp.ndarray
-        meshgrid component of k values along an axis
+    vel : xr.DataArray
+        Velocity field
+    ds : xr.Dataset
+        Simulation dataset, used for spacings
+    der_ax : Axis
+        Axis along which to take the derivative
 
     Returns
     -------
-    np.ndarray | cp.ndarray
-        Realspace derivative of velocity with respect to the direction from the k-grid
+    ndarray
+        Derivative of velocity field, as array
     """
-    xp, genfft = xp_fft(vel_hat)
-    return xp.real(genfft.ifftn(genfft.ifftshift(1j * k_grid * vel_hat)))
+    xp = _xp(vel.data)
+    genfft = _genfft(vel.data)
+    k_ranges = _krange_fft(ds)
+    k_mesh: tuple[ndarray, ndarray, ndarray] = xp.meshgrid(*k_ranges, indexing="ij")
+    vel_hat: ndarray = genfft.fftshift(genfft.fftn(vel.data))
+    return xp.real(genfft.ifftn(genfft.ifftshift(1j * k_mesh[der_ax.value] * vel_hat)))
 
 
 def advection_xr(
@@ -77,13 +88,9 @@ def advection_xr(
             + data["w"] * vel.differentiate(ax_names[0], edge_order)
         )
     else:
-        xp, genfft = xp_fft(vel.data)
-        k_ranges = krange_fft(data)
-        k_mesh = xp.meshgrid(*k_ranges, indexing="ij")
-        vel_hat = genfft.fftshift(genfft.fftn(vel.data))
         adv = (
-            data["w"] * spectral_der(vel_hat, k_mesh[0])
-            + data["v"] * spectral_der(vel_hat, k_mesh[1])
-            + data["u"] * spectral_der(vel_hat, k_mesh[2])
+            data["w"] * spectral_der(vel, data, Axis.z)
+            + data["v"] * spectral_der(vel, data, Axis.y)
+            + data["u"] * spectral_der(vel, data, Axis.x)
         )
     return adv
