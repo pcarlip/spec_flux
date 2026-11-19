@@ -39,11 +39,17 @@ build-backend = "uv_build"
 
 [tool.uv.sources]
 xrft = { git = "https://github.com/pcarlip/xrft.git", branch = "cupy" }
+spectral-flux = { workspace = true }
 # currently using my own branch of xrft which supports cupy
 # will switch to main branch if my PR is accepted
 
 [dependency-groups]
-dev = ["ipython>=9.17.1", "ruff>=0.16.5"]
+dev = [
+    "ipython>=9.17.1",
+    "numpy-typing-compat>=20260602.2.5",
+    "ruff>=0.16.5",
+    "spectral-flux[cupy12]",
+]
 test = ["fluidsf>=0.2.2", "pytest>=9.1.1"]
 
 [tool.ruff]
